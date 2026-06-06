@@ -38,7 +38,7 @@ const defaultData = {
     { id: 3, name: "Mayonesa con verdeo", image: "img/mayonesa_verdeo.png", active: true },
     { id: 4, name: "Ketchup", image: "img/ketchup.png", active: true },
     { id: 5, name: "Mostaza", image: "img/mostaza.png", active: true },
-    { id: 6, name: "Barbacoa", image: "img/barbacoa.png", active: true }
+    { id: 6, name: "Barbacoa", image: "img/barbacoa.png", active: true },
     { id: 7, name: "Cheddar", image: "img/cheddar.png", active: true }
   ],
   orders: []
