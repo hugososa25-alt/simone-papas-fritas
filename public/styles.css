@@ -87,7 +87,7 @@ input,select,textarea{width:100%;background:#050505;color:white;border:1px solid
 @media(max-width:700px){
   .intro .cart-pill{
     position:fixed !important;
-    bottom:15px !important;
+    bottom:80px !important;
     left:15px !important;
     right:15px !important;
     top:auto !important;
