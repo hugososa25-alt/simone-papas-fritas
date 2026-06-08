@@ -147,7 +147,7 @@ function renderCart(){
         <p><b>${money(item.total)}</b></p>
       </div>`).join("") : '<div class="side-cart-item"><p>Aún no agregaste productos.</p></div>';
   }
-
+document.querySelector(".send-whatsapp-btn").style.display = cart.length > 0 ? "block" : "none";
   get("cashWith").style.display=get("payment").value==="Efectivo"?"block":"none";
 }
 
