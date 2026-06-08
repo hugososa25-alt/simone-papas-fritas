@@ -1,6 +1,6 @@
 let menu = { products: [], toppings: [], sauces: [] };
 let orders = [];
-let selectedProductIndex = 0;
+let selectedProductIndex = null;
 let selectedToppings = [];
 let selectedSauces = [];
 let itemQty = 1;
