@@ -27,8 +27,8 @@ function activeSauces(){return menu.sauces.filter(s=>s.active)}
 function currentProduct(){const arr=activeProducts(); if(!arr[selectedProductIndex]) selectedProductIndex=0; return arr[selectedProductIndex]}
 function resetSelections(){
   const p=currentProduct();
-  selectedToppings = p && p.mode==="solo_salsas" ? [] : activeToppings().map(t=>t.name);
-  selectedSauces = activeSauces().slice(0,3).map(s=>s.name);
+  selectedToppings = [];
+  selectedSauces = [];
   itemQty = 1;
 }
 function selectProduct(i){
