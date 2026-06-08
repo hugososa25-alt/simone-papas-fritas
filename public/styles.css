@@ -110,3 +110,6 @@ input,select,textarea{width:100%;background:#050505;color:white;border:1px solid
     padding-bottom:100px !important;
   }
 }
+.send-whatsapp-btn{
+  display:none;
+}
