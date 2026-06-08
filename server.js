@@ -18,6 +18,7 @@ const defaultData = {
     { id: 5, name: "Box Premium Simone", price: 10000, mode: "solo_salsas", detail: "Papas fritas, patitas, formitas, bastones de mozzarella, caritas de papa y aros de cebolla", image: "img/hero_box.png", active: true },
     { id: 6, name: "Pollo Crujiente", price: 6000, mode: "solo_salsas", detail: "Pollo crujiente + salsas", image: "img/pollo_crujiente.png", active: true },
     { id: 7, name: "Pollo Crujiente + Papas", price: 8000, mode: "solo_salsas", detail: "Pollo crujiente + papas fritas + salsas", image: "img/pollo_crujiente_papas.png", active: true }
+    { id: 8, name: "Stella Artois Pure Gold 330", price: 10000, mode: "solo_salsas", detail: "3 botellas 330cc", image: "img/stella_pure_gold_330.png", active: true }
   ],
   toppings: [
     { id: 1, name: "Huevo picado en cubitos", image: "img/huevo_picado.png", active: true },
