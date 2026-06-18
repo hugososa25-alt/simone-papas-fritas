@@ -31,7 +31,13 @@ const defaultData = {
     { id: 8, name: "Salsa criolla", image: "img/salsa_criolla.png", active: true },
     { id: 9, name: "Arvejas", image: "img/arvejas.png", active: true },
     { id: 10, name: "Pepinos", image: "img/pepinos.png", active: true },
-    { id: 11, name: "Choclo", image: "img/choclo.png", active: true }
+    { id: 11, name: "Choclo", image: "img/choclo.png", active: true },
+    {
+  id: 12,
+  name: "boniato",
+  image: "img/boniato.png",
+  active: true
+},
   ],
   sauces: [
     { id: 1, name: "Mayonesa", image: "img/mayonesa.png", active: true },
