@@ -1123,7 +1123,7 @@ app.get(
 
       const pending = data.orders
         .filter((order) =>
-          order.printStatus !== "Impreso"
+          order.printStatus === "Pendiente"
         )
         .slice()
         .sort((a, b) =>
