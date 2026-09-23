@@ -6,6 +6,7 @@ let selectedSauces = [];
 let itemQty = 1;
 let cart = [];
 let delivery = "Envío a domicilio";
+let availableImages = [];
 
 async function api(path, options) {
   const res = await fetch(path, {
@@ -18,13 +19,52 @@ async function api(path, options) {
 
 async function loadMenu() {
   menu = await api("/api/menu");
+
   try {
     orders = await api("/api/orders");
   } catch(e) {
     orders = [];
   }
+
+  try {
+    availableImages = await api("/api/images");
+  } catch(e) {
+    availableImages = [];
+  }
+
   resetSelections();
   render();
+  renderProductImageSelector();
+}
+
+function renderProductImageSelector() {
+  const selector = get("newProductImage");
+  const preview = get("newProductImagePreview");
+
+  if (!selector || !availableImages.length) return;
+
+  const previousValue = selector.value;
+
+  selector.innerHTML = availableImages.map(img => {
+    const imagePath = typeof img === "string" ? img : img.path;
+    const imageName = typeof img === "string"
+      ? img.replace(/^img\//, "")
+      : (img.name || imagePath.replace(/^img\//, ""));
+
+    return `<option value="${imagePath}">${imageName}</option>`;
+  }).join("");
+
+  if (availableImages.some(img => (typeof img === "string" ? img : img.path) === previousValue)) {
+    selector.value = previousValue;
+  }
+
+  if (preview && selector.value) {
+    preview.src = selector.value;
+  }
+
+  selector.onchange = function() {
+    if (preview) preview.src = this.value;
+  };
 }
 
 function money(n) {
