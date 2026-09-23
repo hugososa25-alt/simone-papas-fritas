@@ -6,6 +6,7 @@ const { Pool } = require("pg");
 const app = express();
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Hugo1976!";
+const PRINT_API_KEY = process.env.PRINT_API_KEY || "";
 
 if (!process.env.DATABASE_URL) {
   console.error("FALTA DATABASE_URL en Render");
@@ -405,6 +406,29 @@ function asyncRoute(fn) {
 
   };
 
+}
+
+
+/* =========================================================
+   IMPRESION AUTOMATICA - SEGURIDAD
+========================================================= */
+
+function requirePrintKey(req, res, next) {
+  if (!PRINT_API_KEY) {
+    return res.status(503).json({
+      error: "PRINT_API_KEY no configurada"
+    });
+  }
+
+  const key = String(req.get("x-print-key") || "");
+
+  if (key !== PRINT_API_KEY) {
+    return res.status(401).json({
+      error: "No autorizado"
+    });
+  }
+
+  next();
 }
 
 
@@ -1014,6 +1038,12 @@ app.post(
         status:
           "Pendiente",
 
+        printStatus:
+          "Pendiente",
+
+        printedAt:
+          null,
+
         ...req.body
 
       };
@@ -1069,6 +1099,80 @@ app.patch(
 
       res.json({
         ok: true
+      });
+
+    }
+  )
+);
+
+
+/* =========================================================
+   IMPRESION AUTOMATICA DE PEDIDOS
+   Uso exclusivo de la PC del local
+========================================================= */
+
+app.get(
+  "/api/print/orders/pending",
+  requirePrintKey,
+
+  asyncRoute(
+    async (req, res) => {
+
+      const data =
+        await readDb();
+
+      const pending = data.orders
+        .filter((order) =>
+          order.printStatus !== "Impreso"
+        )
+        .slice()
+        .sort((a, b) =>
+          Number(a.id) - Number(b.id)
+        );
+
+      res.json(pending);
+
+    }
+  )
+);
+
+
+app.post(
+  "/api/print/orders/:id/printed",
+  requirePrintKey,
+
+  asyncRoute(
+    async (req, res) => {
+
+      const data =
+        await readDb();
+
+      const order =
+        data.orders.find(
+          (item) =>
+            item.id ===
+            Number(req.params.id)
+        );
+
+      if (!order) {
+        return res.status(404).json({
+          error: "Pedido no encontrado"
+        });
+      }
+
+      order.printStatus =
+        "Impreso";
+
+      order.printedAt =
+        new Date().toISOString();
+
+      await writeDb(data);
+
+      res.json({
+        ok: true,
+        id: order.id,
+        printStatus: order.printStatus,
+        printedAt: order.printedAt
       });
 
     }
