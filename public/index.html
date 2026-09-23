@@ -23,6 +23,7 @@
 
     <section class="layout">
       <div class="main-col">
+
         <section class="panel">
           <h2>Elegí tu producto</h2>
           <div id="productsGrid" class="grid products-grid"></div>
@@ -30,6 +31,7 @@
 
         <section id="customize" class="panel">
           <h2>Personalizá este producto</h2>
+
           <div class="selected">
             <img id="selectedImage" src="" alt="">
             <div>
@@ -44,7 +46,7 @@
             <div id="toppingsGrid" class="grid option-grid"></div>
           </div>
 
-          <div>
+          <div id="saucesBlock">
             <h2>Salsas</h2>
             <div id="saucesGrid" class="grid option-grid"></div>
           </div>
@@ -64,24 +66,35 @@
           <div class="benefit">🟢 <b>Pedido por WhatsApp</b><span>Fácil, rápido y seguro.</span></div>
           <div class="benefit">💛 <b>Hecho con pasión</b><span>Cada pedido como si fuera nuestro.</span></div>
         </section>
+
       </div>
 
       <aside class="cart-side">
         <h2>🛒 Tu carrito <span id="sideCartCount">0</span></h2>
         <div id="sideCartItems"></div>
-        <div class="totalrow"><b>Total</b><b id="sideCartTotal">$0</b></div>
+        <div class="totalrow">
+          <b>Total</b>
+          <b id="sideCartTotal">$0</b>
+        </div>
         <button class="btn green" onclick="openCart()">Finalizar pedido</button>
       </aside>
     </section>
   </main>
 
+
+  <!-- ========================= -->
+  <!-- ADMINISTRADOR -->
+  <!-- ========================= -->
+
   <main id="adminPage" class="page">
+
     <section class="admin-head">
       <h1>Panel Administrador</h1>
       <button class="btn secondary" onclick="logoutAdmin()">Salir</button>
     </section>
 
     <section class="panel">
+
       <div class="admin-tabs">
         <button class="active" onclick="showAdmin('productosAdmin', this)">Productos</button>
         <button onclick="showAdmin('toppingsAdmin', this)">Toppings</button>
@@ -89,97 +102,383 @@
         <button onclick="showAdmin('pedidosAdmin', this)">Pedidos</button>
       </div>
 
+
+      <!-- PRODUCTOS -->
+
       <div id="productosAdmin" class="admin-section active">
+
         <div id="adminProducts"></div>
+
         <div class="addbox">
+
           <h3>Agregar producto</h3>
-          <input id="newProductName" placeholder="Nombre">
-          <input id="newProductPrice" type="number" placeholder="Precio">
+
+          <input
+            id="newProductName"
+            placeholder="Nombre del producto"
+          >
+
+          <input
+            id="newProductPrice"
+            type="number"
+            placeholder="Precio"
+          >
+
+          <input
+            id="newProductDetail"
+            placeholder="Descripción del producto"
+          >
+
+
+          <label style="display:block;margin-top:12px;margin-bottom:5px;">
+            <b>Personalización</b>
+          </label>
+
           <select id="newProductMode">
-            <option value="toppings">Con toppings</option>
-            <option value="solo_salsas">Solo salsas</option>
+
+            <option value="toppings">
+              Toppings + Salsas
+            </option>
+
+            <option value="solo_salsas">
+              Solo Salsas
+            </option>
+
+            <option value="directo">
+              Sin personalización
+            </option>
+
           </select>
-          <button class="btn" onclick="addProduct()">Agregar producto</button>
+
+
+          <label style="display:block;margin-top:15px;margin-bottom:5px;">
+            <b>Imagen del producto</b>
+          </label>
+
+          <select id="newProductImage">
+
+            <option value="img/cono_mini.png">
+              Simone Mini
+            </option>
+
+            <option value="img/cono_clasico.png">
+              Simone Clásico
+            </option>
+
+            <option value="img/cono_full.png">
+              Simone Full
+            </option>
+
+            <option value="img/box_papas.png">
+              Box de Papas
+            </option>
+
+            <option value="img/hero_box.png">
+              Box Premium Simone
+            </option>
+
+            <option value="img/pollo_crujiente.png">
+              Pollo Crujiente
+            </option>
+
+            <option value="img/pollo_crujiente_papas.png">
+              Pollo Crujiente + Papas
+            </option>
+
+            <option value="img/stella_pure_gold_330.png">
+              Stella Pure Gold
+            </option>
+
+          </select>
+
+
+          <div style="margin-top:15px;">
+
+            <img
+              id="newProductImagePreview"
+              src="img/cono_mini.png"
+              alt="Vista previa"
+              style="
+                width:150px;
+                height:150px;
+                object-fit:cover;
+                border-radius:12px;
+                border:1px solid #333;
+              "
+            >
+
+          </div>
+
+
+          <button
+            class="btn"
+            onclick="addProduct()"
+            style="margin-top:15px;"
+          >
+            Agregar producto
+          </button>
+
         </div>
       </div>
+
+
+      <!-- TOPPINGS -->
 
       <div id="toppingsAdmin" class="admin-section">
+
         <div id="adminToppings"></div>
+
         <div class="addbox">
+
           <h3>Agregar topping</h3>
-          <input id="newToppingName" placeholder="Nombre">
-          <button class="btn" onclick="addTopping()">Agregar topping</button>
+
+          <input
+            id="newToppingName"
+            placeholder="Nombre"
+          >
+
+          <button
+            class="btn"
+            onclick="addTopping()"
+          >
+            Agregar topping
+          </button>
+
         </div>
+
       </div>
+
+
+      <!-- SALSAS -->
 
       <div id="salsasAdmin" class="admin-section">
+
         <div id="adminSauces"></div>
+
         <div class="addbox">
+
           <h3>Agregar salsa</h3>
-          <input id="newSauceName" placeholder="Nombre">
-          <button class="btn" onclick="addSauce()">Agregar salsa</button>
+
+          <input
+            id="newSauceName"
+            placeholder="Nombre"
+          >
+
+          <button
+            class="btn"
+            onclick="addSauce()"
+          >
+            Agregar salsa
+          </button>
+
         </div>
+
       </div>
+
+
+      <!-- PEDIDOS -->
 
       <div id="pedidosAdmin" class="admin-section">
+
         <div class="dashboard">
-          <div class="metric"><div>Ventas hoy</div><b id="salesToday">$0</b></div>
-          <div class="metric"><div>Pedidos hoy</div><b id="ordersToday">0</b></div>
-          <div class="metric"><div>Ticket promedio</div><b id="avgTicket">$0</b></div>
-          <div class="metric"><div>Pendientes</div><b id="pendingOrders">0</b></div>
+
+          <div class="metric">
+            <div>Ventas hoy</div>
+            <b id="salesToday">$0</b>
+          </div>
+
+          <div class="metric">
+            <div>Pedidos hoy</div>
+            <b id="ordersToday">0</b>
+          </div>
+
+          <div class="metric">
+            <div>Ticket promedio</div>
+            <b id="avgTicket">$0</b>
+          </div>
+
+          <div class="metric">
+            <div>Pendientes</div>
+            <b id="pendingOrders">0</b>
+          </div>
+
         </div>
+
         <div id="ordersList"></div>
+
       </div>
+
     </section>
+
   </main>
+
 </div>
 
+
+<!-- ========================= -->
+<!-- CARRITO -->
+<!-- ========================= -->
+
 <div id="cartDrawer" class="drawer">
+
   <div class="checkout">
-    <button class="close" onclick="closeCart()">×</button>
+
+    <button
+      class="close"
+      onclick="closeCart()"
+    >
+      ×
+    </button>
+
     <h2>🛒 Tu carrito</h2>
+
     <div id="cartItems"></div>
-    <div class="totalrow"><b>Total</b><b id="cartTotal">$0</b></div>
 
-    <h2>Datos de entrega</h2>
-    <input id="name" placeholder="Nombre y apellido">
-    <input id="phone" placeholder="Teléfono">
-    <input id="address" placeholder="Dirección">
-    <input id="neighborhood" placeholder="Barrio">
-    <input id="reference" placeholder="Referencia opcional">
-    <textarea id="notes" placeholder="Aclaraciones generales"></textarea>
-
-    <h2>Entrega</h2>
-    <div class="delivery">
-      <button class="active" onclick="setDelivery('Envío a domicilio', this)">🛵 Envío</button>
-      <button onclick="setDelivery('Retiro en local', this)">🏪 Retiro</button>
+    <div class="totalrow">
+      <b>Total</b>
+      <b id="cartTotal">$0</b>
     </div>
 
+
+    <h2>Datos de entrega</h2>
+
+    <input id="name" placeholder="Nombre y apellido">
+
+    <input id="phone" placeholder="Teléfono">
+
+    <input id="address" placeholder="Dirección">
+
+    <input id="neighborhood" placeholder="Barrio">
+
+    <input id="reference" placeholder="Referencia opcional">
+
+    <textarea
+      id="notes"
+      placeholder="Aclaraciones generales"
+    ></textarea>
+
+
+    <h2>Entrega</h2>
+
+    <div class="delivery">
+
+      <button
+        class="active"
+        onclick="setDelivery('Envío a domicilio', this)"
+      >
+        🛵 Envío
+      </button>
+
+      <button
+        onclick="setDelivery('Retiro en local', this)"
+      >
+        🏪 Retiro
+      </button>
+
+    </div>
+
+
     <h2>Pago</h2>
-    <select id="payment" onchange="render()">
+
+    <select
+      id="payment"
+      onchange="render()"
+    >
       <option>Transferencia</option>
       <option>Efectivo</option>
     </select>
-    <div class="transfer">
-      <b>Alias:</b> lili.curuzu.colon<br>
-      <b>Titular:</b> Sogaray Lilian Ines
-    </div>
-    <input id="cashWith" placeholder="¿Con cuánto pagás? Ej: $10.000">
 
-    <button class="btn green send-whatsapp-btn" onclick="sendOrder()">Enviar pedido por WhatsApp</button>
+
+    <div class="transfer">
+
+      <b>Alias:</b>
+      lili.curuzu.colon
+      <br>
+
+      <b>Titular:</b>
+      Sogaray Lilian Ines
+
+    </div>
+
+
+    <input
+      id="cashWith"
+      placeholder="¿Con cuánto pagás? Ej: $10.000"
+    >
+
+
+    <button
+      class="btn green send-whatsapp-btn"
+      onclick="sendOrder()"
+    >
+      Enviar pedido por WhatsApp
+    </button>
+
   </div>
+
 </div>
+
+
+<!-- ========================= -->
+<!-- LOGIN ADMIN -->
+<!-- ========================= -->
 
 <div id="adminLoginDrawer" class="drawer">
+
   <div class="checkout">
-    <button class="close" onclick="closeAdminLogin()">×</button>
+
+    <button
+      class="close"
+      onclick="closeAdminLogin()"
+    >
+      ×
+    </button>
+
     <h2>Acceso Administrador</h2>
-    <input id="adminPassword" type="password" placeholder="Contraseña">
-    <button class="btn" onclick="loginAdmin()">Entrar</button>
-    <p id="adminLoginError" class="hint danger"></p>
+
+    <input
+      id="adminPassword"
+      type="password"
+      placeholder="Contraseña"
+    >
+
+    <button
+      class="btn"
+      onclick="loginAdmin()"
+    >
+      Entrar
+    </button>
+
+    <p
+      id="adminLoginError"
+      class="hint danger"
+    ></p>
+
   </div>
+
 </div>
 
+
 <script src="app.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+
+  const selector = document.getElementById("newProductImage");
+  const preview = document.getElementById("newProductImagePreview");
+
+  if(selector && preview){
+
+    selector.addEventListener("change", function(){
+
+      preview.src = this.value;
+
+    });
+
+  }
+
+});
+</script>
+
 </body>
 </html>
