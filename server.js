@@ -34,6 +34,7 @@ const defaultData = {
       name: "Simone Mini",
       price: 3000,
       mode: "toppings",
+      categoryId: 1,
       detail: "Papas fritas + toppings + salsas",
       image: "img/cono_mini.png",
       active: true
@@ -44,6 +45,7 @@ const defaultData = {
       name: "Simone Clásico",
       price: 7500,
       mode: "toppings",
+      categoryId: 1,
       detail: "Papas fritas + toppings + salsas",
       image: "img/cono_clasico.png",
       active: true
@@ -54,6 +56,7 @@ const defaultData = {
       name: "Simone Full",
       price: 9500,
       mode: "toppings",
+      categoryId: 1,
       detail: "Papas fritas + toppings + salsas",
       image: "img/cono_full.png",
       active: true
@@ -64,6 +67,7 @@ const defaultData = {
       name: "Box de Papas",
       price: 9500,
       mode: "toppings",
+      categoryId: 1,
       detail: "Papas fritas + toppings + salsas",
       image: "img/box_papas.png",
       active: true
@@ -74,6 +78,7 @@ const defaultData = {
       name: "Box Premium Simone",
       price: 10000,
       mode: "solo_salsas",
+      categoryId: 1,
       detail:
         "Papas fritas, patitas, formitas, bastones de mozzarella, caritas de papa y aros de cebolla",
       image: "img/hero_box.png",
@@ -85,6 +90,7 @@ const defaultData = {
       name: "Pollo Crujiente",
       price: 6000,
       mode: "solo_salsas",
+      categoryId: 1,
       detail: "Pollo crujiente + salsas",
       image: "img/pollo_crujiente.png",
       active: true
@@ -95,6 +101,7 @@ const defaultData = {
       name: "Pollo Crujiente + Papas",
       price: 8000,
       mode: "solo_salsas",
+      categoryId: 1,
       detail: "Pollo crujiente + papas fritas + salsas",
       image: "img/pollo_crujiente_papas.png",
       active: true
@@ -105,6 +112,7 @@ const defaultData = {
       name: "Stella Artois Pure Gold 330",
       price: 10000,
       mode: "solo_salsas",
+      categoryId: 1,
       detail: "3 botellas 330cc",
       image: "img/stella_pure_gold_330.png",
       active: true
@@ -255,6 +263,15 @@ const defaultData = {
 
   ],
 
+  categories: [
+    {
+      id: 1,
+      name: "Papas y comidas",
+      active: true,
+      order: 1
+    }
+  ],
+
   orders: []
 
 };
@@ -315,6 +332,25 @@ async function readDb() {
 
   if (!data.sauces)
     data.sauces = defaultData.sauces;
+
+  if (!data.categories || !Array.isArray(data.categories) || !data.categories.length) {
+    data.categories = JSON.parse(
+      JSON.stringify(defaultData.categories)
+    );
+  }
+
+  let needsSave = false;
+
+  data.products.forEach((product) => {
+    if (product.categoryId === undefined || product.categoryId === null) {
+      product.categoryId = 1;
+      needsSave = true;
+    }
+  });
+
+  if (needsSave) {
+    await writeDb(data);
+  }
 
   return data;
 
@@ -467,6 +503,21 @@ app.patch(
         req.body.mode ??
         item.mode;
 
+      if (req.body.categoryId !== undefined) {
+        const categoryId = Number(req.body.categoryId);
+        const categoryExists = data.categories.some(
+          (category) => category.id === categoryId
+        );
+
+        if (!categoryExists) {
+          return res.status(400).json({
+            error: "Categoría no válida"
+          });
+        }
+
+        item.categoryId = categoryId;
+      }
+
       item.detail =
         req.body.detail ??
         item.detail;
@@ -510,6 +561,7 @@ app.post(
         name,
         price,
         mode,
+        categoryId,
         detail,
         image
       } = req.body;
@@ -523,6 +575,21 @@ app.post(
               "Falta nombre o precio"
           });
 
+      }
+
+      const selectedCategoryId =
+        categoryId === undefined || categoryId === null || categoryId === ""
+          ? 1
+          : Number(categoryId);
+
+      const categoryExists = data.categories.some(
+        (category) => category.id === selectedCategoryId
+      );
+
+      if (!categoryExists) {
+        return res.status(400).json({
+          error: "Categoría no válida"
+        });
       }
 
       const item = {
@@ -540,6 +607,9 @@ app.post(
         mode:
           mode ||
           "toppings",
+
+        categoryId:
+          selectedCategoryId,
 
         detail:
           detail ||
@@ -562,6 +632,128 @@ app.post(
       res.json({
         ok: true,
         id: item.id
+      });
+
+    }
+  )
+);
+
+
+/* =========================================================
+   CATEGORIAS
+========================================================= */
+
+app.post(
+  "/api/categories",
+
+  asyncRoute(
+    async (req, res) => {
+
+      const data =
+        await readDb();
+
+      const name =
+        String(req.body?.name || "").trim();
+
+      if (!name) {
+        return res.status(400).json({
+          error: "Falta nombre de categoría"
+        });
+      }
+
+      const duplicated = data.categories.some(
+        (category) =>
+          String(category.name).trim().toLowerCase() ===
+          name.toLowerCase()
+      );
+
+      if (duplicated) {
+        return res.status(400).json({
+          error: "La categoría ya existe"
+        });
+      }
+
+      const item = {
+        id: nextId(data.categories),
+        name,
+        active: true,
+        order: data.categories.length + 1
+      };
+
+      data.categories.push(item);
+
+      await writeDb(data);
+
+      res.json({
+        ok: true,
+        id: item.id
+      });
+
+    }
+  )
+);
+
+
+app.patch(
+  "/api/categories/:id",
+
+  asyncRoute(
+    async (req, res) => {
+
+      const data =
+        await readDb();
+
+      const item = data.categories.find(
+        (category) =>
+          category.id === Number(req.params.id)
+      );
+
+      if (!item) {
+        return res.status(404).json({
+          error: "Categoría no encontrada"
+        });
+      }
+
+      if (req.body.name !== undefined) {
+        const name = String(req.body.name).trim();
+
+        if (!name) {
+          return res.status(400).json({
+            error: "El nombre de la categoría no puede estar vacío"
+          });
+        }
+
+        const duplicated = data.categories.some(
+          (category) =>
+            category.id !== item.id &&
+            String(category.name).trim().toLowerCase() ===
+              name.toLowerCase()
+        );
+
+        if (duplicated) {
+          return res.status(400).json({
+            error: "La categoría ya existe"
+          });
+        }
+
+        item.name = name;
+      }
+
+      if (req.body.active !== undefined) {
+        item.active = Boolean(req.body.active);
+      }
+
+      if (req.body.order !== undefined) {
+        const order = Number(req.body.order);
+        if (Number.isFinite(order)) {
+          item.order = order;
+        }
+      }
+
+      await writeDb(data);
+
+      res.json({
+        ok: true
       });
 
     }
