@@ -97,6 +97,7 @@
 
       <div class="admin-tabs">
         <button class="active" onclick="showAdmin('productosAdmin', this)">Productos</button>
+        <button onclick="showAdmin('categoriasAdmin', this)">Categorías</button>
         <button onclick="showAdmin('toppingsAdmin', this)">Toppings</button>
         <button onclick="showAdmin('salsasAdmin', this)">Salsas</button>
         <button onclick="showAdmin('pedidosAdmin', this)">Pedidos</button>
@@ -128,6 +129,15 @@
             id="newProductDetail"
             placeholder="Descripción del producto"
           >
+
+
+          <label style="display:block;margin-top:12px;margin-bottom:5px;">
+            <b>Categoría</b>
+          </label>
+
+          <select id="newProductCategory">
+            <option value="1">Papas y comidas</option>
+          </select>
 
 
           <label style="display:block;margin-top:12px;margin-bottom:5px;">
@@ -219,6 +229,33 @@
           </button>
 
         </div>
+      </div>
+
+
+      <!-- CATEGORÍAS -->
+
+      <div id="categoriasAdmin" class="admin-section">
+
+        <div id="adminCategories"></div>
+
+        <div class="addbox">
+
+          <h3>Agregar categoría</h3>
+
+          <input
+            id="newCategoryName"
+            placeholder="Ej: Bebidas, Dulces, Combos"
+          >
+
+          <button
+            class="btn"
+            onclick="addCategory()"
+          >
+            Agregar categoría
+          </button>
+
+        </div>
+
       </div>
 
 
