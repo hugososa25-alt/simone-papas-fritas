@@ -1,5 +1,6 @@
 const express = require("express");
 const path = require("path");
+const fs = require("fs").promises;
 const { Pool } = require("pg");
 
 const app = express();
@@ -877,6 +878,44 @@ app.patch(
       res.json({
         ok: true
       });
+
+    }
+  )
+);
+
+
+/* =========================================================
+   IMAGENES DISPONIBLES
+   Lee automaticamente public/img
+========================================================= */
+
+app.get(
+  "/api/images",
+
+  asyncRoute(
+    async (req, res) => {
+
+      const imagesFolder = path.join(
+        __dirname,
+        "public",
+        "img"
+      );
+
+      const files = await fs.readdir(imagesFolder);
+
+      const images = files
+        .filter((file) =>
+          /\.(png|jpg|jpeg|webp|gif)$/i.test(file)
+        )
+        .sort((a, b) =>
+          a.localeCompare(b, "es", { sensitivity: "base" })
+        )
+        .map((file) => ({
+          name: file,
+          path: "img/" + file
+        }));
+
+      res.json(images);
 
     }
   )
