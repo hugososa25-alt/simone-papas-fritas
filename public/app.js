@@ -911,127 +911,92 @@ async function updateOrderStatus(id, status) {
 }
 
 function printOrder(id) {
-
-  const o =
-    orders.find(x => x.id === id);
-
+  const o = orders.find(x => x.id === id);
   if (!o) return;
 
-  const items =
-    (o.items || []).map(it => `
-
-      <div>
-        <b>
-          ${it.quantity} x ${it.product}
-        </b>
-      </div>
-
-      <div>
-        ${it.detail || ""}
-      </div>
-
-      ${
-        it.toppings?.length
-          ? `<div>Toppings: ${it.toppings.join(", ")}</div>`
-          : ""
-      }
-
-      ${
-        it.mode !== "directo"
-          ? `<div>Salsas: ${(it.sauces || []).join(", ")}</div>`
-          : ""
-      }
-
-      <div>
-        Subtotal: ${money(it.total)}
-      </div>
-
-      <div class="line"></div>
-
-    `).join("");
-
-  const html = `
-
-    <div id="printTicket">
-
-      <h1>SIMONE PAPAS FRITAS</h1>
-
-      <div style="text-align:center">
-        Pedido #${o.id}
-      </div>
-
-      <div style="text-align:center">
-        ${new Date(o.createdAt).toLocaleString("es-AR")}
-      </div>
-
-      <div class="line"></div>
-
-      <div>
-        Cliente: ${o.customer?.name || ""}
-      </div>
-
-      <div>
-        Tel: ${o.customer?.phone || ""}
-      </div>
-
-      <div>
-        Entrega: ${o.delivery || ""}
-      </div>
-
-      <div>
-        Direccion: ${o.customer?.address || ""}
-      </div>
-
-      <div>
-        Barrio: ${o.customer?.neighborhood || ""}
-      </div>
-
-      <div>
-        Referencia: ${o.customer?.reference || ""}
-      </div>
-
-      <div class="line"></div>
-
-      ${items}
-
-      <div>
-        Pago: ${o.payment || ""}
-      </div>
-
-      <div>
-        Envio: Segun distancia
-      </div>
-
-      <div style="font-size:16px">
-        <b>
-          TOTAL: ${money(o.total)}
-        </b>
-      </div>
-
-      <div class="line"></div>
-
-      <div style="text-align:center">
-        Gracias por tu compra
-      </div>
-
+  const items = (o.items || []).map(it => `
+    <div class="item">
+      <div class="item-title">${it.quantity} x ${it.product}</div>
+      ${it.detail ? `<div>${it.detail}</div>` : ""}
+      ${it.toppings?.length ? `<div><b>Toppings:</b> ${it.toppings.join(", ")}</div>` : ""}
+      ${it.mode !== "directo" ? `<div><b>Salsas:</b> ${(it.sauces || []).join(", ") || "Sin salsas"}</div>` : ""}
+      <div><b>Subtotal:</b> ${money(it.total)}</div>
     </div>
-  `;
+  `).join("");
 
-  const old =
-    document.getElementById("printTicket");
+  const cashLine = o.payment === "Efectivo" && o.cashWith
+    ? `<div><b>Paga con:</b> ${o.cashWith}</div>` : "";
 
-  if (old) old.remove();
+  const notesLine = o.notes && o.notes !== "Sin aclaraciones"
+    ? `<div class="important"><b>Aclaraciones:</b> ${o.notes}</div>` : "";
 
-  const div =
-    document.createElement("div");
+  const ticket = `
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Pedido #${o.id}</title>
+<style>
+  @page { size: 80mm 297mm; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; width: 80mm; background: #fff; color: #000;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  body { padding: 4mm 4mm 3mm 4mm; }
+  .ticket { width: 72mm; margin: 0; padding: 0; font-size: 12px; line-height: 1.28; }
+  .center { text-align: center; }
+  .title { font-size: 18px; font-weight: 800; margin: 0 0 2px; }
+  .order-number { font-size: 17px; font-weight: 800; margin: 4px 0 2px; }
+  .separator { border-top: 1px dashed #000; margin: 7px 0; }
+  .item { padding: 4px 0 6px; border-bottom: 1px dashed #000; }
+  .item-title { font-size: 14px; font-weight: 800; margin-bottom: 2px; }
+  .total { font-size: 18px; font-weight: 900; margin: 7px 0 4px; }
+  .important { margin-top: 5px; font-size: 13px; }
+  .footer { text-align: center; margin-top: 8px; font-weight: 700; }
+</style>
+</head>
+<body>
+  <div class="ticket">
+    <div class="center">
+      <div class="title">SIMONE PAPAS FRITAS</div>
+      <div>Madariaga 809</div>
+      <div class="order-number">PEDIDO #${o.id}</div>
+      <div>${new Date(o.createdAt).toLocaleString("es-AR")}</div>
+    </div>
+    <div class="separator"></div>
+    <div><b>Cliente:</b> ${o.customer?.name || ""}</div>
+    <div><b>Tel:</b> ${o.customer?.phone || ""}</div>
+    <div><b>Entrega:</b> ${o.delivery || ""}</div>
+    ${o.delivery === "Envío a domicilio" ? `
+      <div><b>Dirección:</b> ${o.customer?.address || ""}</div>
+      <div><b>Barrio:</b> ${o.customer?.neighborhood || ""}</div>` : ""}
+    <div><b>Referencia:</b> ${o.customer?.reference || ""}</div>
+    <div class="separator"></div>
+    ${items}
+    ${notesLine}
+    <div class="separator"></div>
+    <div><b>Pago:</b> ${o.payment || ""}</div>
+    ${cashLine}
+    <div><b>Envío:</b> Según distancia</div>
+    <div class="total">TOTAL: ${money(o.total)}</div>
+    <div class="separator"></div>
+    <div class="footer">Gracias por tu compra</div>
+  </div>
+<script>
+window.onload=function(){setTimeout(function(){window.print();},250);};
+<\/script>
+</body>
+</html>`;
 
-  div.innerHTML = html;
-
-  document.body.appendChild(
-    div.firstElementChild
-  );
-
-  window.print();
+  const printWindow = window.open("", "_blank", "width=420,height=700");
+  if (!printWindow) {
+    alert("El navegador bloqueó la ventana de impresión. Permití las ventanas emergentes para Simone.");
+    return;
+  }
+  printWindow.document.open();
+  printWindow.document.write(ticket);
+  printWindow.document.close();
 }
 
 [
