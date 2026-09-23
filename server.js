@@ -19,8 +19,15 @@ const pool = new Pool({
 app.use(express.json({ limit: "10mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
+
+/* =========================================================
+   DATOS INICIALES
+========================================================= */
+
 const defaultData = {
+
   products: [
+
     {
       id: 1,
       name: "Simone Mini",
@@ -30,6 +37,7 @@ const defaultData = {
       image: "img/cono_mini.png",
       active: true
     },
+
     {
       id: 2,
       name: "Simone Clásico",
@@ -39,6 +47,7 @@ const defaultData = {
       image: "img/cono_clasico.png",
       active: true
     },
+
     {
       id: 3,
       name: "Simone Full",
@@ -48,6 +57,7 @@ const defaultData = {
       image: "img/cono_full.png",
       active: true
     },
+
     {
       id: 4,
       name: "Box de Papas",
@@ -57,6 +67,7 @@ const defaultData = {
       image: "img/box_papas.png",
       active: true
     },
+
     {
       id: 5,
       name: "Box Premium Simone",
@@ -67,6 +78,7 @@ const defaultData = {
       image: "img/hero_box.png",
       active: true
     },
+
     {
       id: 6,
       name: "Pollo Crujiente",
@@ -76,6 +88,7 @@ const defaultData = {
       image: "img/pollo_crujiente.png",
       active: true
     },
+
     {
       id: 7,
       name: "Pollo Crujiente + Papas",
@@ -85,6 +98,7 @@ const defaultData = {
       image: "img/pollo_crujiente_papas.png",
       active: true
     },
+
     {
       id: 8,
       name: "Stella Artois Pure Gold 330",
@@ -94,132 +108,163 @@ const defaultData = {
       image: "img/stella_pure_gold_330.png",
       active: true
     }
+
   ],
 
+
   toppings: [
+
     {
       id: 1,
       name: "Huevo picado en cubitos",
       image: "img/huevo_picado.png",
       active: true
     },
+
     {
       id: 2,
       name: "Mortadela",
       image: "img/mortadela.png",
       active: true
     },
+
     {
       id: 3,
       name: "Queso",
       image: "img/queso.png",
       active: true
     },
+
     {
       id: 4,
       name: "Paleta",
       image: "img/paleta.png",
       active: true
     },
+
     {
       id: 5,
       name: "Salchichas",
       image: "img/salchichas.png",
       active: true
     },
+
     {
       id: 6,
       name: "Milanesas",
       image: "img/milanesas.png",
       active: true
     },
+
     {
       id: 7,
       name: "Salame",
       image: "img/salame.png",
       active: true
     },
+
     {
       id: 8,
       name: "Salsa criolla",
       image: "img/salsa_criolla.png",
       active: true
     },
+
     {
       id: 9,
       name: "Arvejas",
       image: "img/arvejas.png",
       active: true
     },
+
     {
       id: 10,
       name: "Pepinos",
       image: "img/pepinos.png",
       active: true
     },
+
     {
       id: 11,
       name: "Choclo",
       image: "img/choclo.png",
       active: true
     },
+
     {
       id: 12,
       name: "boniato",
       image: "img/boniato.png",
       active: true
     }
+
   ],
 
+
   sauces: [
+
     {
       id: 1,
       name: "Mayonesa",
       image: "img/mayonesa.png",
       active: true
     },
+
     {
       id: 2,
       name: "Mayonesa con ajo",
       image: "img/mayonesa_ajo.png",
       active: true
     },
+
     {
       id: 3,
       name: "Mayonesa con verdeo",
       image: "img/mayonesa_verdeo.png",
       active: true
     },
+
     {
       id: 4,
       name: "Ketchup",
       image: "img/ketchup.png",
       active: true
     },
+
     {
       id: 5,
       name: "Mostaza",
       image: "img/mostaza.png",
       active: true
     },
+
     {
       id: 6,
       name: "Barbacoa",
       image: "img/barbacoa.png",
       active: true
     },
+
     {
       id: 7,
       name: "Cheddar",
       image: "img/cheddar.png",
       active: true
     }
+
   ],
 
   orders: []
+
 };
 
+
+/* =========================================================
+   SUPABASE
+========================================================= */
+
 async function initDb() {
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS simone_store (
       id INTEGER PRIMARY KEY,
@@ -236,337 +281,701 @@ async function initDb() {
     `,
     [JSON.stringify(defaultData)]
   );
+
 }
 
+
 async function readDb() {
+
   const result = await pool.query(
     "SELECT data FROM simone_store WHERE id = 1"
   );
 
   if (!result.rows.length) {
+
     await writeDb(defaultData);
-    return JSON.parse(JSON.stringify(defaultData));
+
+    return JSON.parse(
+      JSON.stringify(defaultData)
+    );
+
   }
 
   const data = result.rows[0].data;
 
-  if (!data.orders) data.orders = [];
-  if (!data.products) data.products = defaultData.products;
-  if (!data.toppings) data.toppings = defaultData.toppings;
-  if (!data.sauces) data.sauces = defaultData.sauces;
+  if (!data.orders)
+    data.orders = [];
+
+  if (!data.products)
+    data.products = defaultData.products;
+
+  if (!data.toppings)
+    data.toppings = defaultData.toppings;
+
+  if (!data.sauces)
+    data.sauces = defaultData.sauces;
 
   return data;
+
 }
 
+
 async function writeDb(data) {
+
   await pool.query(
     `
     INSERT INTO simone_store (id, data, updated_at)
     VALUES (1, $1::jsonb, NOW())
+
     ON CONFLICT (id)
+
     DO UPDATE SET
       data = EXCLUDED.data,
       updated_at = NOW()
     `,
     [JSON.stringify(data)]
   );
+
 }
+
+
+/* =========================================================
+   FUNCIONES AUXILIARES
+========================================================= */
 
 function nextId(list) {
+
   return list.length
-    ? Math.max(...list.map((x) => Number(x.id))) + 1
+    ? Math.max(
+        ...list.map(
+          (x) => Number(x.id)
+        )
+      ) + 1
     : 1;
+
 }
 
+
 function asyncRoute(fn) {
+
   return (req, res, next) => {
-    Promise.resolve(fn(req, res, next)).catch(next);
+
+    Promise
+      .resolve(
+        fn(req, res, next)
+      )
+      .catch(next);
+
   };
+
 }
+
+
+/* =========================================================
+   MENU
+========================================================= */
 
 app.get(
   "/api/menu",
-  asyncRoute(async (req, res) => {
-    res.json(await readDb());
-  })
+
+  asyncRoute(
+    async (req, res) => {
+
+      res.json(
+        await readDb()
+      );
+
+    }
+  )
 );
 
-app.post("/api/admin/login", (req, res) => {
-  const { password } = req.body || {};
 
-  if (password === ADMIN_PASSWORD) {
-    return res.json({ ok: true });
+/* =========================================================
+   LOGIN ADMINISTRADOR
+========================================================= */
+
+app.post(
+  "/api/admin/login",
+
+  (req, res) => {
+
+    const { password } =
+      req.body || {};
+
+    if (
+      password ===
+      ADMIN_PASSWORD
+    ) {
+
+      return res.json({
+        ok: true
+      });
+
+    }
+
+    return res
+      .status(401)
+      .json({
+        ok: false
+      });
+
   }
+);
 
-  return res.status(401).json({ ok: false });
-});
+
+/* =========================================================
+   ACTUALIZAR PRODUCTO
+========================================================= */
 
 app.patch(
   "/api/products/:id",
-  asyncRoute(async (req, res) => {
-    const data = await readDb();
 
-    const item = data.products.find(
-      (p) => p.id === Number(req.params.id)
-    );
+  asyncRoute(
+    async (req, res) => {
 
-    if (!item) {
-      return res
-        .status(404)
-        .json({ error: "Producto no encontrado" });
+      const data =
+        await readDb();
+
+      const item =
+        data.products.find(
+          (p) =>
+            p.id ===
+            Number(req.params.id)
+        );
+
+      if (!item) {
+
+        return res
+          .status(404)
+          .json({
+            error:
+              "Producto no encontrado"
+          });
+
+      }
+
+      item.name =
+        req.body.name ??
+        item.name;
+
+      item.price =
+        req.body.price ??
+        item.price;
+
+      item.mode =
+        req.body.mode ??
+        item.mode;
+
+      item.detail =
+        req.body.detail ??
+        item.detail;
+
+      item.image =
+        req.body.image ??
+        item.image;
+
+      item.active =
+        req.body.active === undefined
+          ? item.active
+          : Boolean(
+              req.body.active
+            );
+
+      await writeDb(data);
+
+      res.json({
+        ok: true
+      });
+
     }
-
-    item.name = req.body.name ?? item.name;
-    item.price = req.body.price ?? item.price;
-    item.mode = req.body.mode ?? item.mode;
-    item.detail = req.body.detail ?? item.detail;
-
-    item.active =
-      req.body.active === undefined
-        ? item.active
-        : Boolean(req.body.active);
-
-    await writeDb(data);
-
-    res.json({ ok: true });
-  })
+  )
 );
+
+
+/* =========================================================
+   AGREGAR PRODUCTO
+========================================================= */
 
 app.post(
   "/api/products",
-  asyncRoute(async (req, res) => {
-    const data = await readDb();
 
-    const { name, price, mode, detail } = req.body;
+  asyncRoute(
+    async (req, res) => {
 
-    if (!name || !price) {
-      return res
-        .status(400)
-        .json({ error: "Falta nombre o precio" });
+      const data =
+        await readDb();
+
+      const {
+        name,
+        price,
+        mode,
+        detail,
+        image
+      } = req.body;
+
+      if (!name || !price) {
+
+        return res
+          .status(400)
+          .json({
+            error:
+              "Falta nombre o precio"
+          });
+
+      }
+
+      const item = {
+
+        id:
+          nextId(
+            data.products
+          ),
+
+        name,
+
+        price:
+          Number(price),
+
+        mode:
+          mode ||
+          "toppings",
+
+        detail:
+          detail ||
+          "Producto Simone",
+
+        image:
+          image ||
+          "img/hero_box.png",
+
+        active: true
+
+      };
+
+      data.products.push(
+        item
+      );
+
+      await writeDb(data);
+
+      res.json({
+        ok: true,
+        id: item.id
+      });
+
     }
-
-    const item = {
-      id: nextId(data.products),
-      name,
-      price: Number(price),
-      mode: mode || "toppings",
-      detail: detail || "Producto Simone",
-      image: "img/hero_box.png",
-      active: true
-    };
-
-    data.products.push(item);
-
-    await writeDb(data);
-
-    res.json({
-      ok: true,
-      id: item.id
-    });
-  })
+  )
 );
 
-async function patchList(listName, id, body, res) {
-  const data = await readDb();
 
-  const item = data[listName].find(
-    (x) => x.id === Number(id)
-  );
+/* =========================================================
+   ACTUALIZAR TOPPINGS / SALSAS
+========================================================= */
+
+async function patchList(
+  listName,
+  id,
+  body,
+  res
+) {
+
+  const data =
+    await readDb();
+
+  const item =
+    data[listName].find(
+      (x) =>
+        x.id ===
+        Number(id)
+    );
 
   if (!item) {
-    return res.status(404).json({
-      error: "No encontrado"
-    });
+
+    return res
+      .status(404)
+      .json({
+        error:
+          "No encontrado"
+      });
+
   }
 
-  item.name = body.name ?? item.name;
+  item.name =
+    body.name ??
+    item.name;
 
   item.active =
     body.active === undefined
       ? item.active
-      : Boolean(body.active);
+      : Boolean(
+          body.active
+        );
 
   await writeDb(data);
 
-  res.json({ ok: true });
+  res.json({
+    ok: true
+  });
+
 }
+
+
+/* =========================================================
+   TOPPINGS
+========================================================= */
 
 app.patch(
   "/api/toppings/:id",
-  asyncRoute(async (req, res) => {
-    await patchList(
-      "toppings",
-      req.params.id,
-      req.body,
-      res
-    );
-  })
+
+  asyncRoute(
+    async (req, res) => {
+
+      await patchList(
+        "toppings",
+        req.params.id,
+        req.body,
+        res
+      );
+
+    }
+  )
 );
 
-app.patch(
-  "/api/sauces/:id",
-  asyncRoute(async (req, res) => {
-    await patchList(
-      "sauces",
-      req.params.id,
-      req.body,
-      res
-    );
-  })
-);
 
 app.post(
   "/api/toppings",
-  asyncRoute(async (req, res) => {
-    const data = await readDb();
 
-    const { name } = req.body;
+  asyncRoute(
+    async (req, res) => {
 
-    if (!name) {
-      return res.status(400).json({
-        error: "Falta nombre"
+      const data =
+        await readDb();
+
+      const { name } =
+        req.body;
+
+      if (!name) {
+
+        return res
+          .status(400)
+          .json({
+            error:
+              "Falta nombre"
+          });
+
+      }
+
+      const item = {
+
+        id:
+          nextId(
+            data.toppings
+          ),
+
+        name,
+
+        image:
+          "img/mortadela.png",
+
+        active: true
+
+      };
+
+      data.toppings.push(
+        item
+      );
+
+      await writeDb(data);
+
+      res.json({
+        ok: true,
+        id: item.id
       });
+
     }
-
-    const item = {
-      id: nextId(data.toppings),
-      name,
-      image: "img/mortadela.png",
-      active: true
-    };
-
-    data.toppings.push(item);
-
-    await writeDb(data);
-
-    res.json({
-      ok: true,
-      id: item.id
-    });
-  })
+  )
 );
+
+
+/* =========================================================
+   SALSAS
+========================================================= */
+
+app.patch(
+  "/api/sauces/:id",
+
+  asyncRoute(
+    async (req, res) => {
+
+      await patchList(
+        "sauces",
+        req.params.id,
+        req.body,
+        res
+      );
+
+    }
+  )
+);
+
 
 app.post(
   "/api/sauces",
-  asyncRoute(async (req, res) => {
-    const data = await readDb();
 
-    const { name } = req.body;
+  asyncRoute(
+    async (req, res) => {
 
-    if (!name) {
-      return res.status(400).json({
-        error: "Falta nombre"
+      const data =
+        await readDb();
+
+      const { name } =
+        req.body;
+
+      if (!name) {
+
+        return res
+          .status(400)
+          .json({
+            error:
+              "Falta nombre"
+          });
+
+      }
+
+      const item = {
+
+        id:
+          nextId(
+            data.sauces
+          ),
+
+        name,
+
+        image:
+          "img/mayonesa.png",
+
+        active: true
+
+      };
+
+      data.sauces.push(
+        item
+      );
+
+      await writeDb(data);
+
+      res.json({
+        ok: true,
+        id: item.id
       });
+
     }
-
-    const item = {
-      id: nextId(data.sauces),
-      name,
-      image: "img/mayonesa.png",
-      active: true
-    };
-
-    data.sauces.push(item);
-
-    await writeDb(data);
-
-    res.json({
-      ok: true,
-      id: item.id
-    });
-  })
+  )
 );
+
+
+/* =========================================================
+   PEDIDOS
+========================================================= */
 
 app.get(
   "/api/orders",
-  asyncRoute(async (req, res) => {
-    const data = await readDb();
 
-    res.json(
-      data.orders.slice().reverse()
-    );
-  })
+  asyncRoute(
+    async (req, res) => {
+
+      const data =
+        await readDb();
+
+      res.json(
+        data.orders
+          .slice()
+          .reverse()
+      );
+
+    }
+  )
 );
+
 
 app.post(
   "/api/orders",
-  asyncRoute(async (req, res) => {
-    const data = await readDb();
 
-    const order = {
-      id: nextId(data.orders),
-      createdAt: new Date().toISOString(),
-      status: "Pendiente",
-      ...req.body
-    };
+  asyncRoute(
+    async (req, res) => {
 
-    data.orders.push(order);
+      const data =
+        await readDb();
 
-    await writeDb(data);
+      const order = {
 
-    res.json({
-      ok: true,
-      id: order.id
-    });
-  })
+        id:
+          nextId(
+            data.orders
+          ),
+
+        createdAt:
+          new Date()
+            .toISOString(),
+
+        status:
+          "Pendiente",
+
+        ...req.body
+
+      };
+
+      data.orders.push(
+        order
+      );
+
+      await writeDb(data);
+
+      res.json({
+        ok: true,
+        id: order.id
+      });
+
+    }
+  )
 );
+
 
 app.patch(
   "/api/orders/:id",
-  asyncRoute(async (req, res) => {
-    const data = await readDb();
 
-    const order = data.orders.find(
-      (o) => o.id === Number(req.params.id)
-    );
+  asyncRoute(
+    async (req, res) => {
 
-    if (!order) {
-      return res.status(404).json({
-        error: "Pedido no encontrado"
+      const data =
+        await readDb();
+
+      const order =
+        data.orders.find(
+          (o) =>
+            o.id ===
+            Number(req.params.id)
+        );
+
+      if (!order) {
+
+        return res
+          .status(404)
+          .json({
+            error:
+              "Pedido no encontrado"
+          });
+
+      }
+
+      order.status =
+        req.body.status ??
+        order.status;
+
+      await writeDb(data);
+
+      res.json({
+        ok: true
       });
+
     }
-
-    order.status =
-      req.body.status ?? order.status;
-
-    await writeDb(data);
-
-    res.json({ ok: true });
-  })
+  )
 );
 
-app.get("*", (req, res) => {
-  res.sendFile(
-    path.join(__dirname, "public", "index.html")
-  );
-});
 
-app.use((err, req, res, next) => {
-  console.error("ERROR SIMONE:", err);
+/* =========================================================
+   PAGINA WEB
+========================================================= */
 
-  res.status(500).json({
-    error: "Error de base de datos"
-  });
-});
+app.get(
+  "*",
 
-const PORT = process.env.PORT || 3000;
+  (req, res) => {
+
+    res.sendFile(
+      path.join(
+        __dirname,
+        "public",
+        "index.html"
+      )
+    );
+
+  }
+);
+
+
+/* =========================================================
+   ERRORES
+========================================================= */
+
+app.use(
+  (err, req, res, next) => {
+
+    console.error(
+      "ERROR SIMONE:",
+      err
+    );
+
+    res
+      .status(500)
+      .json({
+        error:
+          "Error de base de datos"
+      });
+
+  }
+);
+
+
+/* =========================================================
+   INICIAR SERVIDOR
+========================================================= */
+
+const PORT =
+  process.env.PORT ||
+  3000;
+
 
 initDb()
+
   .then(() => {
-    app.listen(PORT, () => {
-      console.log("");
-      console.log("==========================================");
-      console.log(" SIMONE + SUPABASE funcionando");
-      console.log(" Puerto:", PORT);
-      console.log("==========================================");
-      console.log("");
-    });
+
+    app.listen(
+      PORT,
+      () => {
+
+        console.log("");
+        console.log(
+          "=========================================="
+        );
+
+        console.log(
+          " SIMONE + SUPABASE funcionando"
+        );
+
+        console.log(
+          " Puerto:",
+          PORT
+        );
+
+        console.log(
+          "=========================================="
+        );
+
+        console.log("");
+
+      }
+    );
+
   })
+
   .catch((err) => {
+
     console.error(
       "NO SE PUDO CONECTAR A SUPABASE:",
       err
     );
 
     process.exit(1);
+
   });
