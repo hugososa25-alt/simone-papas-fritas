@@ -1056,4 +1056,50 @@ function printOrder(id) {
 
 });
 
-loadMenu().then(checkAdminRoute);
+loadMenu().then(() => {
+  lastMenuSnapshot = JSON.stringify(menu);
+  checkAdminRoute();
+});
+
+/* ==========================================
+   ACTUALIZACION AUTOMATICA DEL MENU
+   - Consulta cambios cada 15 segundos
+   - No recarga la pagina
+   - Conserva carrito y seleccion del cliente
+========================================== */
+
+let lastMenuSnapshot = "";
+
+async function refreshMenuAutomatically() {
+  try {
+    const freshMenu = await api("/api/menu");
+    const freshSnapshot = JSON.stringify(freshMenu);
+
+    if (!lastMenuSnapshot) {
+      lastMenuSnapshot = JSON.stringify(menu);
+    }
+
+    if (freshSnapshot !== lastMenuSnapshot) {
+      const currentId = currentProduct() ? currentProduct().id : null;
+
+      menu = freshMenu;
+      lastMenuSnapshot = freshSnapshot;
+
+      const products = activeProducts();
+      const sameIndex = products.findIndex(p => p.id === currentId);
+
+      if (sameIndex >= 0) {
+        selectedProductIndex = sameIndex;
+      } else if (products.length) {
+        selectedProductIndex = 0;
+      }
+
+      render();
+    }
+  } catch (e) {
+    // Si momentaneamente no hay conexion, conserva la pantalla actual.
+  }
+}
+
+setInterval(refreshMenuAutomatically, 15000);
+
