@@ -1,4 +1,4 @@
-let menu = { products: [], toppings: [], sauces: [] };
+let menu = { products: [], toppings: [], sauces: [], categories: [] };
 let orders = [];
 let selectedProductIndex = null;
 let selectedToppings = [];
@@ -89,6 +89,15 @@ function activeToppings() {
 
 function activeSauces() {
   return menu.sauces.filter(s => s.active);
+}
+
+function activeCategories() {
+  return (menu.categories || []).filter(c => c.active !== false);
+}
+
+function categoryName(id) {
+  const c = (menu.categories || []).find(x => Number(x.id) === Number(id));
+  return c ? c.name : "Papas y comidas";
 }
 
 function currentProduct() {
@@ -257,19 +266,34 @@ function render() {
   const toppings = activeToppings();
   const sauces = activeSauces();
 
-  get("productsGrid").innerHTML = products.map((x, i) => `
-    <div
-      class="card ${i === selectedProductIndex ? "active" : ""}"
-      onclick="selectProduct(${i})"
-    >
-      ${i === selectedProductIndex ? '<span class="check">✓</span>' : ""}
-      <img src="${x.image}" alt="${x.name}">
-      <div class="body">
-        <h3>${x.name}</h3>
-        <div class="price">${money(x.price)}</div>
+  const categories = activeCategories();
+
+  get("productsGrid").innerHTML = categories.map(c => {
+    const items = products
+      .map((x, i) => ({ x, i }))
+      .filter(({ x }) => Number(x.categoryId || 1) === Number(c.id));
+
+    if (!items.length) return "";
+
+    return `
+      <div class="product-category-section" style="grid-column:1/-1;width:100%;">
+        <h2 style="margin:22px 0 14px;">${c.name}</h2>
       </div>
-    </div>
-  `).join("");
+      ${items.map(({ x, i }) => `
+        <div
+          class="card ${i === selectedProductIndex ? "active" : ""}"
+          onclick="selectProduct(${i})"
+        >
+          ${i === selectedProductIndex ? '<span class="check">✓</span>' : ""}
+          <img src="${x.image}" alt="${x.name}">
+          <div class="body">
+            <h3>${x.name}</h3>
+            <div class="price">${money(x.price)}</div>
+          </div>
+        </div>
+      `).join("")}
+    `;
+  }).join("");
 
   get("selectedImage").src = p.image;
   get("selectedName").textContent = p.name;
@@ -533,6 +557,17 @@ async function sendOrder() {
 function renderAdmin() {
   if (!get("adminProducts")) return;
 
+  const newProductCategory = get("newProductCategory");
+  if (newProductCategory) {
+    const previousCategory = newProductCategory.value;
+    newProductCategory.innerHTML = (menu.categories || []).filter(c => c.active !== false).map(c =>
+      `<option value="${c.id}">${c.name}</option>`
+    ).join("");
+    if ([...newProductCategory.options].some(o => o.value === previousCategory)) {
+      newProductCategory.value = previousCategory;
+    }
+  }
+
   get("adminProducts").innerHTML =
     menu.products.map(p => `
       <div class="admin-row">
@@ -547,6 +582,18 @@ function renderAdmin() {
           value="${p.price}"
           onchange="updateProduct(${p.id},{price:Number(this.value)})"
         >
+
+        <select onchange="updateProduct(${p.id},{categoryId:Number(this.value)})">
+          ${(menu.categories || []).map(c => `
+            <option value="${c.id}" ${Number(p.categoryId || 1) === Number(c.id) ? "selected" : ""}>${c.name}</option>
+          `).join("")}
+        </select>
+
+        <select onchange="updateProduct(${p.id},{mode:this.value})">
+          <option value="toppings" ${p.mode === "toppings" ? "selected" : ""}>Toppings + Salsas</option>
+          <option value="solo_salsas" ${p.mode === "solo_salsas" ? "selected" : ""}>Solo Salsas</option>
+          <option value="directo" ${p.mode === "directo" ? "selected" : ""}>Sin personalización</option>
+        </select>
 
         <button
           class="switch ${p.active ? "" : "off"}"
@@ -576,6 +623,18 @@ function renderAdmin() {
 
       </div>
     `).join("");
+
+  const adminCategories = get("adminCategories");
+  if (adminCategories) {
+    adminCategories.innerHTML = (menu.categories || []).map(c => `
+      <div class="admin-row two">
+        <input value="${c.name}" onchange="updateCategory(${c.id},{name:this.value})">
+        <button class="switch ${c.active === false ? "off" : ""}" onclick="updateCategory(${c.id},{active:${c.active === false ? "true" : "false"}})">
+          ${c.active === false ? "Pausada" : "Activa"}
+        </button>
+      </div>
+    `).join("");
+  }
 
   get("adminSauces").innerHTML =
     menu.sauces.map(s => `
@@ -764,6 +823,10 @@ async function addProduct() {
   const image =
     get("newProductImage").value;
 
+  const categoryId = get("newProductCategory")
+    ? Number(get("newProductCategory").value)
+    : 1;
+
   if (!name || !price) {
     return alert("Completá nombre y precio");
   }
@@ -775,7 +838,8 @@ async function addProduct() {
       price,
       detail,
       mode,
-      image
+      image,
+      categoryId
     })
   });
 
@@ -786,6 +850,29 @@ async function addProduct() {
   await loadMenu();
 
   alert("Producto agregado correctamente");
+}
+
+async function updateCategory(id, data) {
+  await api("/api/categories/" + id, {
+    method: "PATCH",
+    body: JSON.stringify(data)
+  });
+  await loadMenu();
+}
+
+async function addCategory() {
+  const input = get("newCategoryName");
+  const name = input ? input.value.trim() : "";
+  if (!name) return alert("Escribí el nombre de la categoría");
+
+  await api("/api/categories", {
+    method: "POST",
+    body: JSON.stringify({ name })
+  });
+
+  input.value = "";
+  await loadMenu();
+  alert("Categoría agregada correctamente");
 }
 
 async function addTopping() {
