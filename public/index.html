@@ -37,7 +37,7 @@
           <div id="productsGrid" class="grid products-grid"></div>
         </section>
 
-        <section id="customize" class="panel">
+        <section id="customize" class="panel" style="display:none;">
           <h2>Personalizá este producto</h2>
 
           <div class="selected">
@@ -514,6 +514,9 @@
   padding:8px 0 12px;
   margin:0 0 14px;
   background:var(--panel, #111);
+  position:sticky;
+  top:0;
+  z-index:50;
 }
 .category-quickbar button{
   min-width:0;
