@@ -26,6 +26,14 @@
 
         <section class="panel">
           <h2>Elegí tu producto</h2>
+
+          <!-- Barra rápida de categorías -->
+          <div class="category-quickbar" aria-label="Categorías de productos">
+            <button type="button" onclick="goToCategory('Papas y comidas')">🍟 Papas y comidas</button>
+            <button type="button" onclick="goToCategory('Bebidas')">🥤 Bebidas</button>
+            <button type="button" onclick="goToCategory('Golosinas')">🍬 Golosinas</button>
+          </div>
+
           <div id="productsGrid" class="grid products-grid"></div>
         </section>
 
@@ -495,6 +503,77 @@
 
 </div>
 
+
+<style>
+/* Barra rápida de categorías del cliente */
+.category-quickbar{
+  position:sticky;
+  top:0;
+  z-index:20;
+  display:flex;
+  gap:8px;
+  overflow-x:auto;
+  padding:10px 0 12px;
+  margin:0 0 14px;
+  background:var(--panel, #111);
+  scrollbar-width:none;
+}
+.category-quickbar::-webkit-scrollbar{display:none}
+.category-quickbar button{
+  flex:0 0 auto;
+  border:1px solid #f5c400;
+  border-radius:999px;
+  background:#111;
+  color:#fff;
+  padding:10px 14px;
+  font-weight:800;
+  cursor:pointer;
+}
+.category-quickbar button:active{
+  transform:scale(.97);
+  background:#f5c400;
+  color:#111;
+}
+</style>
+
+<script>
+function normalizeCategoryText(value){
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+function goToCategory(categoryName){
+  const target = normalizeCategoryText(categoryName);
+  const grid = document.getElementById("productsGrid");
+  if(!grid) return;
+
+  const candidates = Array.from(grid.querySelectorAll("h1,h2,h3,h4,[data-category],[data-category-name],.category-title,.category-name"));
+  let found = candidates.find(el => {
+    const values = [
+      el.textContent,
+      el.dataset ? el.dataset.category : "",
+      el.dataset ? el.dataset.categoryName : ""
+    ];
+    return values.some(v => normalizeCategoryText(v).includes(target));
+  });
+
+  if(!found){
+    const all = Array.from(grid.querySelectorAll("*"));
+    found = all.find(el => {
+      if(el.children.length) return false;
+      return normalizeCategoryText(el.textContent).includes(target);
+    });
+  }
+
+  if(found){
+    const block = found.closest("section,.category-section,.products-category") || found;
+    block.scrollIntoView({behavior:"smooth", block:"start"});
+  }
+}
+</script>
 
 <script src="app.js"></script>
 
