@@ -1,6 +1,7 @@
 let menu = { products: [], toppings: [], sauces: [], categories: [] };
 let orders = [];
 let selectedProductIndex = null;
+let productChosenByUser = false;
 let selectedToppings = [];
 let selectedSauces = [];
 let itemQty = 1;
@@ -102,7 +103,7 @@ function categoryName(id) {
 
 function currentProduct() {
   const arr = activeProducts();
-  if (!arr[selectedProductIndex]) selectedProductIndex = 0;
+  if (selectedProductIndex === null || !arr[selectedProductIndex]) return null;
   return arr[selectedProductIndex];
 }
 
@@ -114,9 +115,14 @@ function resetSelections() {
 
 function selectProduct(i) {
   selectedProductIndex = i;
+  productChosenByUser = true;
   resetSelections();
   render();
-  get("customize").scrollIntoView({ behavior: "smooth" });
+
+  const customize = get("customize");
+  if (customize && customize.style.display !== "none") {
+    customize.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 }
 
 function scrollToCategory(categoryNameToFind) {
@@ -127,13 +133,23 @@ function scrollToCategory(categoryNameToFind) {
 
   if (!category) return;
 
-  const target = get("categoria-" + category.id);
-  if (target) {
-    target.scrollIntoView({
-      behavior: "smooth",
-      block: "start"
-    });
-  }
+  productChosenByUser = false;
+  selectedProductIndex = null;
+
+  const customize = get("customize");
+  if (customize) customize.style.display = "none";
+
+  render();
+
+  requestAnimationFrame(() => {
+    const target = get("categoria-" + category.id);
+    if (target) {
+      target.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+    }
+  });
 }
 
 function toggle(type, name) {
@@ -277,7 +293,6 @@ function checkAdminRoute() {
 
 function render() {
   const p = currentProduct();
-  if (!p) return;
 
   const products = activeProducts();
   const toppings = activeToppings();
@@ -312,37 +327,42 @@ function render() {
     `;
   }).join("");
 
-  get("selectedImage").src = p.image;
-  get("selectedName").textContent = p.name;
-  get("selectedPrice").textContent = money(p.price);
-  get("qtyText").textContent = itemQty;
+  const customize = get("customize");
+
+  if (!productChosenByUser || !p) {
+    if (customize) customize.style.display = "none";
+  } else {
+    if (customize) customize.style.display = "block";
+
+    get("selectedImage").src = p.image;
+    get("selectedName").textContent = p.name;
+    get("selectedPrice").textContent = money(p.price);
+    get("qtyText").textContent = itemQty;
+
+    /*
+      MODOS:
+      toppings     = toppings + salsas
+      solo_salsas  = solamente salsas
+      directo      = sin toppings ni salsas
+    */
+
+    const toppingsBlock = get("toppingsBlock");
+    const saucesBlock = get("saucesBlock");
+
+    if (p.mode === "toppings") {
+      toppingsBlock.style.display = "block";
+      saucesBlock.style.display = "block";
+    } else if (p.mode === "solo_salsas") {
+      toppingsBlock.style.display = "none";
+      saucesBlock.style.display = "block";
+    } else {
+      toppingsBlock.style.display = "none";
+      saucesBlock.style.display = "none";
+    }
+  }
+
   get("cartCount").textContent =
     cart.reduce((s, i) => s + Number(i.quantity), 0);
-
-  /*
-    MODOS:
-    toppings     = toppings + salsas
-    solo_salsas  = solamente salsas
-    directo      = sin toppings ni salsas
-  */
-
-  const toppingsBlock = get("toppingsBlock");
-  const saucesBlock = get("saucesBlock");
-
-  if (p.mode === "toppings") {
-    toppingsBlock.style.display = "block";
-    saucesBlock.style.display = "block";
-  }
-
-  if (p.mode === "solo_salsas") {
-    toppingsBlock.style.display = "none";
-    saucesBlock.style.display = "block";
-  }
-
-  if (p.mode === "directo") {
-    toppingsBlock.style.display = "none";
-    saucesBlock.style.display = "none";
-  }
 
   get("toppingsGrid").innerHTML = toppings.map(t => `
     <div
@@ -1072,8 +1092,9 @@ async function refreshMenuAutomatically() {
 
       if (sameIndex >= 0) {
         selectedProductIndex = sameIndex;
-      } else if (products.length) {
-        selectedProductIndex = 0;
+      } else {
+        selectedProductIndex = null;
+        productChosenByUser = false;
       }
 
       render();
