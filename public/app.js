@@ -2,6 +2,7 @@ let menu = { products: [], toppings: [], sauces: [], categories: [] };
 let orders = [];
 let selectedProductIndex = null;
 let productChosenByUser = false;
+let selectedCategoryName = "Papas y comidas";
 let selectedToppings = [];
 let selectedSauces = [];
 let itemQty = 1;
@@ -133,23 +134,23 @@ function scrollToCategory(categoryNameToFind) {
 
   if (!category) return;
 
+  selectedCategoryName = category.name;
   productChosenByUser = false;
   selectedProductIndex = null;
+  resetSelections();
 
   const customize = get("customize");
   if (customize) customize.style.display = "none";
 
   render();
 
-  requestAnimationFrame(() => {
-    const target = get("categoria-" + category.id);
-    if (target) {
-      target.scrollIntoView({
-        behavior: "smooth",
-        block: "start"
-      });
-    }
-  });
+  const grid = get("productsGrid");
+  if (grid) {
+    grid.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  }
 }
 
 function toggle(type, name) {
@@ -299,17 +300,24 @@ function render() {
   const sauces = activeSauces();
 
   const categories = activeCategories();
+  let selectedCategory = categories.find(c =>
+    String(c.name || "").trim().toLowerCase() ===
+    String(selectedCategoryName || "").trim().toLowerCase()
+  );
 
-  get("productsGrid").innerHTML = categories.map(c => {
+  if (!selectedCategory && categories.length) {
+    selectedCategory = categories[0];
+    selectedCategoryName = selectedCategory.name;
+  }
+
+  if (selectedCategory) {
     const items = products
       .map((x, i) => ({ x, i }))
-      .filter(({ x }) => Number(x.categoryId || 1) === Number(c.id));
+      .filter(({ x }) => Number(x.categoryId || 1) === Number(selectedCategory.id));
 
-    if (!items.length) return "";
-
-    return `
-      <div id="categoria-${c.id}" class="product-category-section" style="grid-column:1/-1;width:100%;scroll-margin-top:90px;">
-        <h2 style="margin:22px 0 14px;">${c.name}</h2>
+    get("productsGrid").innerHTML = `
+      <div id="categoria-${selectedCategory.id}" class="product-category-section" style="grid-column:1/-1;width:100%;scroll-margin-top:90px;">
+        <h2 style="margin:22px 0 14px;">${selectedCategory.name}</h2>
       </div>
       ${items.map(({ x, i }) => `
         <div
@@ -325,7 +333,9 @@ function render() {
         </div>
       `).join("")}
     `;
-  }).join("");
+  } else {
+    get("productsGrid").innerHTML = "";
+  }
 
   const customize = get("customize");
 
