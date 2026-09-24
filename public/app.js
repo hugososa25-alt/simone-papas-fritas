@@ -119,6 +119,23 @@ function selectProduct(i) {
   get("customize").scrollIntoView({ behavior: "smooth" });
 }
 
+function scrollToCategory(categoryNameToFind) {
+  const category = activeCategories().find(c =>
+    String(c.name || "").trim().toLowerCase() ===
+    String(categoryNameToFind || "").trim().toLowerCase()
+  );
+
+  if (!category) return;
+
+  const target = get("categoria-" + category.id);
+  if (target) {
+    target.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  }
+}
+
 function toggle(type, name) {
   const arr = type === "topping" ? selectedToppings : selectedSauces;
   const idx = arr.indexOf(name);
@@ -276,7 +293,7 @@ function render() {
     if (!items.length) return "";
 
     return `
-      <div class="product-category-section" style="grid-column:1/-1;width:100%;">
+      <div id="categoria-${c.id}" class="product-category-section" style="grid-column:1/-1;width:100%;scroll-margin-top:90px;">
         <h2 style="margin:22px 0 14px;">${c.name}</h2>
       </div>
       ${items.map(({ x, i }) => `
