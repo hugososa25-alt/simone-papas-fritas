@@ -29,9 +29,9 @@
 
           <!-- Barra rápida de categorías -->
           <div class="category-quickbar" aria-label="Categorías de productos">
-            <button type="button" onclick="goToCategory('Papas y comidas')">🍟 Papas y comidas</button>
-            <button type="button" onclick="goToCategory('Bebidas')">🥤 Bebidas</button>
-            <button type="button" onclick="goToCategory('Golosinas')">🍬 Golosinas</button>
+            <button type="button" onclick="scrollToCategory('Papas y comidas')">🍟 Papas y comidas</button>
+            <button type="button" onclick="scrollToCategory('Bebidas')">🥤 Bebidas</button>
+            <button type="button" onclick="scrollToCategory('Golosinas')">🍬 Golosinas</button>
           </div>
 
           <div id="productsGrid" class="grid products-grid"></div>
@@ -507,27 +507,27 @@
 <style>
 /* Barra rápida de categorías del cliente */
 .category-quickbar{
-  position:sticky;
-  top:0;
-  z-index:20;
-  display:flex;
-  gap:8px;
-  overflow-x:auto;
-  padding:10px 0 12px;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:6px;
+  width:100%;
+  padding:8px 0 12px;
   margin:0 0 14px;
   background:var(--panel, #111);
-  scrollbar-width:none;
 }
-.category-quickbar::-webkit-scrollbar{display:none}
 .category-quickbar button{
-  flex:0 0 auto;
+  min-width:0;
+  width:100%;
   border:1px solid #f5c400;
-  border-radius:999px;
+  border-radius:14px;
   background:#111;
   color:#fff;
-  padding:10px 14px;
+  padding:10px 4px;
+  font-size:12px;
+  line-height:1.15;
   font-weight:800;
   cursor:pointer;
+  white-space:normal;
 }
 .category-quickbar button:active{
   transform:scale(.97);
@@ -536,44 +536,7 @@
 }
 </style>
 
-<script>
-function normalizeCategoryText(value){
-  return String(value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toLowerCase();
-}
 
-function goToCategory(categoryName){
-  const target = normalizeCategoryText(categoryName);
-  const grid = document.getElementById("productsGrid");
-  if(!grid) return;
-
-  const candidates = Array.from(grid.querySelectorAll("h1,h2,h3,h4,[data-category],[data-category-name],.category-title,.category-name"));
-  let found = candidates.find(el => {
-    const values = [
-      el.textContent,
-      el.dataset ? el.dataset.category : "",
-      el.dataset ? el.dataset.categoryName : ""
-    ];
-    return values.some(v => normalizeCategoryText(v).includes(target));
-  });
-
-  if(!found){
-    const all = Array.from(grid.querySelectorAll("*"));
-    found = all.find(el => {
-      if(el.children.length) return false;
-      return normalizeCategoryText(el.textContent).includes(target);
-    });
-  }
-
-  if(found){
-    const block = found.closest("section,.category-section,.products-category") || found;
-    block.scrollIntoView({behavior:"smooth", block:"start"});
-  }
-}
-</script>
 
 <script src="app.js"></script>
 
