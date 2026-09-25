@@ -217,29 +217,118 @@ function closeCart() {
   get("cartDrawer").classList.remove("active");
 }
 
-function detectTableFromUrl() {
+function activateTableMode(n) {
+  tableNumber = n;
+  delivery = "Consumo en mesa";
+
+  const btn = get("tableDeliveryButton");
+  if (btn) {
+    btn.style.display = "block";
+    document.querySelectorAll(".delivery button").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+  }
+
+  const notice = get("tableOrderNotice");
+  if (notice) {
+    notice.style.display = "block";
+    notice.textContent = `🪑 Consumo en mesa — Mesa ${tableNumber}`;
+  }
+
+  render();
+}
+
+async function detectTableFromUrl() {
   const params = new URLSearchParams(window.location.search);
   const raw = params.get("mesa");
   const n = Number(raw);
 
-  if (Number.isInteger(n) && n >= 1 && n <= 12) {
-    tableNumber = n;
-    delivery = "Consumo en mesa";
+  // Mantiene compatibilidad con los QR/enlaces individuales existentes.
+  if (Number.isInteger(n) && n >= 1 && n <= 15) {
+    activateTableMode(n);
+    return;
+  }
 
-    const btn = get("tableDeliveryButton");
-    if (btn) {
-      btn.style.display = "block";
-      document.querySelectorAll(".delivery button").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-    }
-
-    const notice = get("tableOrderNotice");
-    if (notice) {
-      notice.style.display = "block";
-      notice.textContent = `🪑 Consumo en mesa — Mesa ${tableNumber}`;
-    }
+  // QR unico: https://simonepf.com.ar/?mesa=seleccionar
+  if (String(raw || "").toLowerCase() === "seleccionar") {
+    await showTableSelector();
   }
 }
+
+function ensureTableSelectorStyles() {
+  if (get("simoneTableSelectorStyles")) return;
+  const style = document.createElement("style");
+  style.id = "simoneTableSelectorStyles";
+  style.textContent = `
+    .mesa-selector-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px}
+    .mesa-selector-box{width:min(620px,100%);max-height:90vh;overflow:auto;background:#fff;border-radius:22px;padding:22px;box-shadow:0 24px 70px rgba(0,0,0,.35);color:#171717}
+    .mesa-selector-box h2{margin:0 0 6px;font-size:27px;text-align:center}
+    .mesa-selector-box .intro{text-align:center;color:#666;margin:0 0 18px}
+    .mesa-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
+    .mesa-choice{border:2px solid #dedede;border-radius:15px;padding:16px 8px;background:#fff;font-weight:900;font-size:17px;cursor:pointer;min-height:72px}
+    .mesa-choice.available{border-color:#79bd8f;background:#eef9f1;color:#176b37}
+    .mesa-choice.busy{border-color:#efb1b1;background:#fff0f0;color:#b42c2c;cursor:not-allowed;opacity:.78}
+    .mesa-refresh{width:100%;margin-top:15px;border:0;border-radius:12px;padding:13px;background:#f6c900;color:#111;font-weight:900;cursor:pointer}
+    .mesa-loading{text-align:center;padding:25px 5px;font-weight:800;color:#666}
+    @media(max-width:480px){.mesa-grid{grid-template-columns:repeat(3,1fr)}.mesa-selector-box{padding:17px}.mesa-choice{font-size:15px;padding:13px 5px}}
+  `;
+  document.head.appendChild(style);
+}
+
+async function showTableSelector() {
+  ensureTableSelectorStyles();
+
+  let overlay = get("simoneTableSelector");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "simoneTableSelector";
+    overlay.className = "mesa-selector-overlay";
+    document.body.appendChild(overlay);
+  }
+
+  overlay.style.display = "flex";
+  overlay.innerHTML = `
+    <div class="mesa-selector-box">
+      <h2>🪑 Elegí tu mesa</h2>
+      <p class="intro">Seleccioná la mesa donde estás sentado.</p>
+      <div class="mesa-loading">Consultando mesas disponibles...</div>
+    </div>`;
+
+  try {
+    const tables = await api("/api/tables/availability");
+    const availableCount = tables.filter(t => t.available).length;
+
+    overlay.innerHTML = `
+      <div class="mesa-selector-box">
+        <h2>🪑 Elegí tu mesa</h2>
+        <p class="intro">${availableCount} mesa${availableCount === 1 ? "" : "s"} disponible${availableCount === 1 ? "" : "s"}. Las ocupadas no se pueden seleccionar.</p>
+        <div class="mesa-grid">
+          ${tables.map(t => `
+            <button class="mesa-choice ${t.available ? "available" : "busy"}"
+              ${t.available ? `onclick="chooseAvailableTable(${t.tableNumber})"` : "disabled"}>
+              Mesa ${t.tableNumber}<br><small>${t.available ? "● Disponible" : "● Ocupada"}</small>
+            </button>
+          `).join("")}
+        </div>
+        <button class="mesa-refresh" onclick="showTableSelector()">↻ ACTUALIZAR MESAS</button>
+      </div>`;
+  } catch (e) {
+    overlay.innerHTML = `
+      <div class="mesa-selector-box">
+        <h2>🪑 Elegí tu mesa</h2>
+        <p class="intro">No pudimos consultar las mesas en este momento.</p>
+        <button class="mesa-refresh" onclick="showTableSelector()">REINTENTAR</button>
+      </div>`;
+  }
+}
+
+function chooseAvailableTable(n) {
+  if (!Number.isInteger(Number(n)) || Number(n) < 1 || Number(n) > 15) return;
+  activateTableMode(Number(n));
+  const overlay = get("simoneTableSelector");
+  if (overlay) overlay.style.display = "none";
+  history.replaceState(null, "", `/?mesa=${Number(n)}`);
+}
+
 
 function setDelivery(v, btn) {
   delivery = v;
@@ -1110,9 +1199,9 @@ window.onload=function(){setTimeout(function(){window.print();},250);};
 
 });
 
-loadMenu().then(() => {
+loadMenu().then(async () => {
   lastMenuSnapshot = JSON.stringify(menu);
-  detectTableFromUrl();
+  await detectTableFromUrl();
   render();
   checkAdminRoute();
 });
