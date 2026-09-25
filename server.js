@@ -7,6 +7,7 @@ const app = express();
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Hugo1976!";
 const PRINT_API_KEY = process.env.PRINT_API_KEY || "";
+const CAJA_PASSWORD = process.env.CAJA_PASSWORD || ADMIN_PASSWORD;
 
 if (!process.env.DATABASE_URL) {
   console.error("FALTA DATABASE_URL en Render");
@@ -429,6 +430,28 @@ function requirePrintKey(req, res, next) {
   }
 
   next();
+}
+
+
+/* =========================================================
+   CAJA - SEGURIDAD Y MESAS
+========================================================= */
+
+function requireCajaKey(req, res, next) {
+  const key = String(req.get("x-caja-key") || "");
+  if (!CAJA_PASSWORD || key !== CAJA_PASSWORD) {
+    return res.status(401).json({ error: "No autorizado" });
+  }
+  next();
+}
+
+function normalizeTableNumber(value) {
+  const n = Number(value);
+  return Number.isInteger(n) && n >= 1 && n <= 12 ? n : null;
+}
+
+function isTableOrder(order) {
+  return order && (order.delivery === "Consumo en mesa" || normalizeTableNumber(order.tableNumber || order.table) !== null);
 }
 
 
@@ -1029,6 +1052,13 @@ app.post(
       const data =
         await readDb();
 
+      const requestedTable = normalizeTableNumber(req.body?.tableNumber || req.body?.table);
+      const tableOrder = req.body?.delivery === "Consumo en mesa" || requestedTable !== null;
+
+      if (tableOrder && requestedTable === null) {
+        return res.status(400).json({ error: "Mesa no válida" });
+      }
+
       const order = {
 
         id:
@@ -1040,16 +1070,21 @@ app.post(
           new Date()
             .toISOString(),
 
+        ...req.body,
+
+        delivery: tableOrder ? "Consumo en mesa" : req.body?.delivery,
+        tableNumber: tableOrder ? requestedTable : null,
+        paymentStatus: tableOrder ? "Pendiente" : "No aplica",
+        paidAt: null,
+
         status:
-          "Pendiente",
+          tableOrder ? "Pendiente de pago" : "Pendiente",
 
         printStatus:
-          "Pendiente",
+          tableOrder ? "EsperandoPago" : "Pendiente",
 
         printedAt:
-          null,
-
-        ...req.body
+          null
 
       };
 
@@ -1112,6 +1147,105 @@ app.patch(
 
 
 /* =========================================================
+   CAJA - CONSUMO EN MESA
+========================================================= */
+
+app.post("/api/caja/login", (req, res) => {
+  const password = String(req.body?.password || "");
+  if (password === CAJA_PASSWORD) return res.json({ ok: true });
+  return res.status(401).json({ ok: false });
+});
+
+app.get(
+  "/api/caja/tables",
+  requireCajaKey,
+  asyncRoute(async (req, res) => {
+    const data = await readDb();
+    const tableOrders = data.orders.filter(isTableOrder);
+
+    const tables = Array.from({ length: 12 }, (_, i) => {
+      const tableNumber = i + 1;
+      const list = tableOrders
+        .filter(o => Number(o.tableNumber || o.table) === tableNumber && o.tableClosed !== true)
+        .sort((a, b) => Number(a.id) - Number(b.id));
+
+      const pendingPayment = list.filter(o => o.paymentStatus !== "Pagado").length;
+      const paid = list.filter(o => o.paymentStatus === "Pagado").length;
+
+      let state = "Libre";
+      if (pendingPayment > 0) state = "Pendiente de pago";
+      else if (paid > 0) state = "Ocupada";
+
+      return {
+        tableNumber,
+        state,
+        pendingPayment,
+        paid,
+        orderCount: list.length,
+        orders: list
+      };
+    });
+
+    res.json(tables);
+  })
+);
+
+app.post(
+  "/api/caja/orders/:id/pay",
+  requireCajaKey,
+  asyncRoute(async (req, res) => {
+    const data = await readDb();
+    const order = data.orders.find(o => o.id === Number(req.params.id));
+
+    if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
+    if (!isTableOrder(order)) return res.status(400).json({ error: "No es un pedido de mesa" });
+
+    order.paymentStatus = "Pagado";
+    order.paidAt = new Date().toISOString();
+    order.status = "Preparando";
+
+    if (order.printStatus !== "Impreso") {
+      order.printStatus = "Pendiente";
+      order.printedAt = null;
+    }
+
+    await writeDb(data);
+    res.json({ ok: true, id: order.id, paymentStatus: order.paymentStatus, printStatus: order.printStatus });
+  })
+);
+
+app.post(
+  "/api/caja/tables/:number/release",
+  requireCajaKey,
+  asyncRoute(async (req, res) => {
+    const tableNumber = normalizeTableNumber(req.params.number);
+    if (tableNumber === null) return res.status(400).json({ error: "Mesa no válida" });
+
+    const data = await readDb();
+    const activeOrders = data.orders.filter(o =>
+      isTableOrder(o) &&
+      Number(o.tableNumber || o.table) === tableNumber &&
+      o.tableClosed !== true
+    );
+
+    const unpaid = activeOrders.filter(o => o.paymentStatus !== "Pagado");
+    if (unpaid.length) {
+      return res.status(409).json({ error: "La mesa tiene pedidos pendientes de pago" });
+    }
+
+    const now = new Date().toISOString();
+    activeOrders.forEach(o => {
+      o.tableClosed = true;
+      o.tableClosedAt = now;
+    });
+
+    await writeDb(data);
+    res.json({ ok: true, tableNumber });
+  })
+);
+
+
+/* =========================================================
    IMPRESION AUTOMATICA DE PEDIDOS
    Uso exclusivo de la PC del local
 ========================================================= */
@@ -1128,7 +1262,8 @@ app.get(
 
       const pending = data.orders
         .filter((order) =>
-          order.printStatus === "Pendiente"
+          order.printStatus === "Pendiente" &&
+          (!isTableOrder(order) || order.paymentStatus === "Pagado")
         )
         .slice()
         .sort((a, b) =>
@@ -1226,6 +1361,11 @@ app.get(
 /* =========================================================
    PAGINA WEB
 ========================================================= */
+
+app.get("/caja", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "caja.html"));
+});
+
 
 app.get(
   "*",
