@@ -447,7 +447,7 @@ function requireCajaKey(req, res, next) {
 
 function normalizeTableNumber(value) {
   const n = Number(value);
-  return Number.isInteger(n) && n >= 1 && n <= 12 ? n : null;
+  return Number.isInteger(n) && n >= 1 && n <= 15 ? n : null;
 }
 
 function isTableOrder(order) {
@@ -1147,6 +1147,34 @@ app.patch(
 
 
 /* =========================================================
+   MESAS - DISPONIBILIDAD PUBLICA PARA QR UNICO
+========================================================= */
+
+app.get(
+  "/api/tables/availability",
+  asyncRoute(async (req, res) => {
+    const data = await readDb();
+    const tableOrders = data.orders.filter(isTableOrder);
+
+    const tables = Array.from({ length: 15 }, (_, i) => {
+      const tableNumber = i + 1;
+      const activeOrders = tableOrders.filter(o =>
+        Number(o.tableNumber || o.table) === tableNumber &&
+        o.tableClosed !== true
+      );
+
+      return {
+        tableNumber,
+        available: activeOrders.length === 0
+      };
+    });
+
+    res.json(tables);
+  })
+);
+
+
+/* =========================================================
    CAJA - CONSUMO EN MESA
 ========================================================= */
 
@@ -1163,7 +1191,7 @@ app.get(
     const data = await readDb();
     const tableOrders = data.orders.filter(isTableOrder);
 
-    const tables = Array.from({ length: 12 }, (_, i) => {
+    const tables = Array.from({ length: 15 }, (_, i) => {
       const tableNumber = i + 1;
       const list = tableOrders
         .filter(o => Number(o.tableNumber || o.table) === tableNumber && o.tableClosed !== true)
