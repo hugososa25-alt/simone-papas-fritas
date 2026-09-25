@@ -5,36 +5,133 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Caja - Simone Papas Fritas</title>
 <style>
-:root{--yellow:#f6c900;--ink:#181818;--muted:#6b6b6b;--bg:#f5f2e9;--card:#fff;--red:#c92d2d;--green:#20834a;--line:#ded9cb}
-*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink)}
+:root{--yellow:#f6c900;--ink:#181818;--muted:#6b6b6b;--bg:#f5f2e9;--card:#fff;--red:#c92d2d;--green:#20834a;--line:#ded9cb;--soft:#efede7}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink)}button,input{font:inherit}
 header{background:#fff;border-bottom:1px solid var(--line);padding:18px 28px;display:flex;align-items:center;justify-content:space-between;gap:20px;position:sticky;top:0;z-index:5}
-.brand{display:flex;align-items:center;gap:14px}.mark{width:48px;height:48px;border-radius:50%;background:var(--yellow);display:grid;place-items:center;font-size:25px}.brand h1{font-size:22px;margin:0}.brand p{margin:3px 0 0;color:var(--muted);font-size:13px}.status{font-size:13px;font-weight:700}.status span{margin-left:14px}.ok{color:var(--green)}
+.brand{display:flex;align-items:center;gap:14px}.mark{width:48px;height:48px;border-radius:50%;background:var(--yellow);display:grid;place-items:center;font-size:25px}.brand h1{font-size:22px;margin:0}.brand p{margin:3px 0 0;color:var(--muted);font-size:13px}.status{font-size:13px;font-weight:700}.status span{margin-left:14px}.ok{color:var(--green)}.bad{color:var(--red)}
 main{max-width:1280px;margin:auto;padding:24px}.topline{display:flex;align-items:end;justify-content:space-between;margin-bottom:16px}.topline h2{margin:0;font-size:25px}.topline p{margin:5px 0 0;color:var(--muted)}
-.tables{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.table{background:var(--card);border:2px solid var(--line);border-radius:18px;padding:18px;min-height:130px;cursor:pointer;transition:.15s}.table:hover{transform:translateY(-2px);border-color:#bcb5a4}.table .n{font-size:25px;font-weight:900}.table .state{display:inline-block;margin-top:12px;padding:7px 11px;border-radius:999px;background:#efede7;font-weight:800;font-size:13px}.table .sub{margin-top:10px;color:var(--muted);font-size:13px}.table.pending{border-color:#e8b1b1}.table.pending .state{background:#fde8e8;color:var(--red)}.table.paid{border-color:#a8d6bb}.table.paid .state{background:#e4f5ea;color:var(--green)}.table.busy{border-color:#ecd77e}.table.busy .state{background:#fff3bf;color:#6e5900}
-.detail{margin-top:22px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px}.detail-head{display:flex;justify-content:space-between;gap:20px;align-items:center;border-bottom:1px solid var(--line);padding-bottom:15px}.detail h3{margin:0;font-size:22px}.empty{padding:32px 10px;text-align:center;color:var(--muted)}.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;color:var(--muted);font-size:13px}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;background:#bbb}.dot.red{background:var(--red)}.dot.green{background:var(--green)}.dot.yellow{background:#d9b100}
-.notice{background:#fff8d7;border:1px solid #ead36a;border-radius:12px;padding:12px 14px;font-size:13px;font-weight:700}
-@media(max-width:850px){.tables{grid-template-columns:repeat(3,1fr)}header{padding:15px}.status{display:none}main{padding:16px}}@media(max-width:560px){.tables{grid-template-columns:repeat(2,1fr)}.topline{display:block}.notice{margin-top:12px}}
+.tables{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.table{background:var(--card);border:2px solid var(--line);border-radius:18px;padding:18px;min-height:130px;cursor:pointer;transition:.15s}.table:hover,.table.selected{transform:translateY(-2px);border-color:#8f8879}.table .n{font-size:25px;font-weight:900}.table .state{display:inline-block;margin-top:12px;padding:7px 11px;border-radius:999px;background:var(--soft);font-weight:800;font-size:13px}.table .sub{margin-top:10px;color:var(--muted);font-size:13px}.table.pending{border-color:#e8b1b1}.table.pending .state{background:#fde8e8;color:var(--red)}.table.paid{border-color:#a8d6bb}.table.paid .state{background:#e4f5ea;color:var(--green)}
+.detail{margin-top:22px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px}.detail-head{display:flex;justify-content:space-between;gap:20px;align-items:center;border-bottom:1px solid var(--line);padding-bottom:15px}.detail h3{margin:0;font-size:22px}.empty{padding:32px 10px;text-align:center;color:var(--muted)}
+.order{border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}.order-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.order h4{font-size:19px;margin:0 0 5px}.badge{padding:6px 10px;border-radius:999px;font-size:12px;font-weight:900;background:#fde8e8;color:var(--red)}.badge.paid{background:#e4f5ea;color:var(--green)}.items{margin:12px 0}.item{padding:8px 0;border-bottom:1px dashed #ddd}.total{font-size:20px;font-weight:900;margin-top:12px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.btn{border:0;border-radius:12px;padding:12px 16px;font-weight:900;cursor:pointer}.pay{background:var(--yellow);color:#111}.release{background:#222;color:#fff}.btn:disabled{opacity:.45;cursor:not-allowed}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;color:var(--muted);font-size:13px}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;background:#bbb}.dot.red{background:var(--red)}.dot.green{background:var(--green)}
+.login{position:fixed;inset:0;background:rgba(0,0,0,.42);display:grid;place-items:center;z-index:20;padding:20px}.login.hidden{display:none}.login-box{width:min(420px,100%);background:#fff;border-radius:18px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.22)}.login-box h2{margin:0 0 8px}.login-box p{color:var(--muted)}.login-box input{width:100%;padding:13px;border:1px solid #ccc;border-radius:10px;margin:8px 0 12px}.login-box button{width:100%;background:var(--yellow);border:0;border-radius:10px;padding:13px;font-weight:900;cursor:pointer}.error{color:var(--red);font-size:13px;font-weight:700;min-height:18px;margin-top:8px}
+@media(max-width:850px){.tables{grid-template-columns:repeat(3,1fr)}header{padding:15px}.status{display:none}main{padding:16px}}@media(max-width:560px){.tables{grid-template-columns:repeat(2,1fr)}.topline{display:block}.order-top{display:block}.badge{display:inline-block;margin-top:7px}}
 </style>
 </head>
 <body>
+<div id="login" class="login">
+  <div class="login-box">
+    <h2>SIMONE · CAJA</h2>
+    <p>Ingresá la contraseña de Caja para continuar.</p>
+    <input id="password" type="password" placeholder="Contraseña" autocomplete="current-password">
+    <button onclick="loginCaja()">Ingresar</button>
+    <div id="loginError" class="error"></div>
+  </div>
+</div>
 <header>
   <div class="brand"><div class="mark">🍟</div><div><h1>SIMONE · CAJA</h1><p>Control de consumo en mesa</p></div></div>
-  <div class="status"><span class="ok">● Sistema en línea</span><span>🖨️ XP-80C</span></div>
+  <div class="status"><span id="connection" class="ok">● Sistema en línea</span><span>🖨️ XP-80C</span></div>
 </header>
 <main>
-  <div class="topline"><div><h2>Mesas</h2><p>12 mesas del local</p></div><div class="notice">VERSIÓN DE PRUEBA · todavía no recibe pedidos reales</div></div>
+  <div class="topline"><div><h2>Mesas</h2><p>12 mesas del local · actualización automática</p></div></div>
   <section class="tables" id="tables"></section>
-  <div class="legend"><span><i class="dot"></i>Libre</span><span><i class="dot red"></i>Pendiente de pago</span><span><i class="dot green"></i>Pagado / preparar</span><span><i class="dot yellow"></i>Ocupada</span></div>
-  <section class="detail"><div class="detail-head"><h3>Detalle de mesa</h3><b id="selected">Ninguna seleccionada</b></div><div class="empty" id="detail">Seleccioná una mesa para ver sus pedidos.</div></section>
+  <div class="legend"><span><i class="dot"></i>Libre</span><span><i class="dot red"></i>Pendiente de pago</span><span><i class="dot green"></i>Pagado / preparar</span></div>
+  <section class="detail">
+    <div class="detail-head"><h3>Detalle de mesa</h3><b id="selected">Ninguna seleccionada</b></div>
+    <div class="empty" id="detail">Seleccioná una mesa para ver sus pedidos.</div>
+  </section>
 </main>
 <script>
-const tables=document.getElementById('tables');
-for(let i=1;i<=12;i++){
- const el=document.createElement('div'); el.className='table';
- el.innerHTML=`<div class="n">Mesa ${i}</div><span class="state">Libre</span><div class="sub">Sin pedidos pendientes</div>`;
- el.onclick=()=>{document.getElementById('selected').textContent='Mesa '+i;document.getElementById('detail').innerHTML='<b>Mesa '+i+' libre</b><br><br>En la próxima etapa acá aparecerán los pedidos, total, Confirmar pago y Liberar mesa.'};
- tables.appendChild(el);
+let cajaKey=sessionStorage.getItem('simoneCajaKey')||'';
+let tableData=[];
+let selectedTable=null;
+let loading=false;
+
+function money(n){return '$'+Number(n||0).toLocaleString('es-AR')}
+function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+
+async function cajaApi(path,options={}){
+  const res=await fetch(path,{...options,headers:{'Content-Type':'application/json','x-caja-key':cajaKey,...(options.headers||{})}});
+  let data={}; try{data=await res.json()}catch(e){}
+  if(res.status===401){sessionStorage.removeItem('simoneCajaKey');cajaKey='';document.getElementById('login').classList.remove('hidden');throw new Error('No autorizado')}
+  if(!res.ok) throw new Error(data.error||'Error de conexión');
+  return data;
 }
+
+async function loginCaja(){
+  const input=document.getElementById('password');
+  const password=input.value;
+  document.getElementById('loginError').textContent='';
+  try{
+    const res=await fetch('/api/caja/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password})});
+    if(!res.ok) throw new Error();
+    cajaKey=password;
+    sessionStorage.setItem('simoneCajaKey',cajaKey);
+    input.value='';
+    document.getElementById('login').classList.add('hidden');
+    await loadTables();
+  }catch(e){document.getElementById('loginError').textContent='Contraseña incorrecta';}
+}
+
+document.getElementById('password').addEventListener('keydown',e=>{if(e.key==='Enter')loginCaja()});
+
+function stateClass(t){if(t.pendingPayment>0)return 'pending';if(t.paid>0)return 'paid';return ''}
+function stateLabel(t){if(t.pendingPayment>0)return 'Pendiente de pago';if(t.paid>0)return 'Pagado / preparar';return 'Libre'}
+
+function renderTables(){
+  const box=document.getElementById('tables');
+  box.innerHTML=tableData.map(t=>`<div class="table ${stateClass(t)} ${selectedTable===t.tableNumber?'selected':''}" onclick="selectTable(${t.tableNumber})">
+    <div class="n">Mesa ${t.tableNumber}</div>
+    <span class="state">${stateLabel(t)}</span>
+    <div class="sub">${t.orderCount?`${t.orderCount} pedido${t.orderCount===1?'':'s'} activo${t.orderCount===1?'':'s'}`:'Sin pedidos pendientes'}</div>
+  </div>`).join('');
+}
+
+function selectTable(n){selectedTable=n;renderTables();renderDetail()}
+
+function renderDetail(){
+  const selected=document.getElementById('selected');
+  const detail=document.getElementById('detail');
+  if(!selectedTable){selected.textContent='Ninguna seleccionada';detail.className='empty';detail.innerHTML='Seleccioná una mesa para ver sus pedidos.';return}
+  const t=tableData.find(x=>x.tableNumber===selectedTable);
+  selected.textContent='Mesa '+selectedTable;
+  if(!t||!t.orders.length){detail.className='empty';detail.innerHTML=`<b>Mesa ${selectedTable} libre</b><br><br>No tiene pedidos activos.`;return}
+  detail.className='';
+  detail.innerHTML=t.orders.map(o=>{
+    const paid=o.paymentStatus==='Pagado';
+    const items=(o.items||[]).map(i=>`<div class="item"><b>${Number(i.quantity||1)} x ${esc(i.product||i.name||'Producto')}</b>${i.toppings?.length?`<br><small>Toppings: ${esc(i.toppings.join(', '))}</small>`:''}${i.mode!=='directo'?`<br><small>Salsas: ${esc((i.sauces||[]).join(', ')||'Sin salsas')}</small>`:''}</div>`).join('');
+    return `<div class="order">
+      <div class="order-top"><div><h4>Pedido #${o.id}</h4><small>${new Date(o.createdAt).toLocaleString('es-AR')}</small></div><span class="badge ${paid?'paid':''}">${paid?'PAGADO / PREPARAR':'PENDIENTE DE PAGO'}</span></div>
+      <div class="items">${items}</div>
+      ${o.notes&&o.notes!=='Sin aclaraciones'?`<div><b>Aclaraciones:</b> ${esc(o.notes)}</div>`:''}
+      <div class="total">TOTAL: ${money(o.total)}</div>
+      <div class="actions">${paid?'':`<button class="btn pay" onclick="confirmPayment(${o.id})">CONFIRMAR PAGO</button>`}</div>
+    </div>`;
+  }).join('')+`<div class="actions"><button class="btn release" onclick="releaseTable(${selectedTable})">LIBERAR MESA</button></div>`;
+}
+
+async function loadTables(){
+  if(!cajaKey||loading)return; loading=true;
+  try{
+    tableData=await cajaApi('/api/caja/tables');
+    document.getElementById('connection').textContent='● Sistema en línea';document.getElementById('connection').className='ok';
+    renderTables();renderDetail();
+  }catch(e){if(cajaKey){document.getElementById('connection').textContent='● Sin conexión';document.getElementById('connection').className='bad'}}
+  finally{loading=false}
+}
+
+async function confirmPayment(id){
+  if(!confirm('¿Confirmar que el Pedido #'+id+' ya fue pagado?'))return;
+  try{await cajaApi('/api/caja/orders/'+id+'/pay',{method:'POST'});await loadTables();alert('Pago confirmado. Pedido #'+id+' enviado a preparación e impresión.')}catch(e){alert(e.message)}
+}
+
+async function releaseTable(n){
+  if(!confirm('¿Liberar la Mesa '+n+'?\n\nHacelo solamente cuando los clientes se hayan retirado.'))return;
+  try{await cajaApi('/api/caja/tables/'+n+'/release',{method:'POST'});await loadTables();alert('Mesa '+n+' liberada.')}catch(e){alert(e.message)}
+}
+
+if(cajaKey){document.getElementById('login').classList.add('hidden');loadTables()}
+setInterval(loadTables,10000);
 </script>
 </body>
 </html>
