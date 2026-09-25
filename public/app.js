@@ -9,7 +9,16 @@ let itemQty = 1;
 let cart = [];
 let delivery = "Envío a domicilio";
 let tableNumber = null;
+let tableReservationToken = sessionStorage.getItem("simoneTableReservationToken") || "";
 let availableImages = [];
+
+function ensureTableReservationToken() {
+  if (!tableReservationToken) {
+    tableReservationToken = "mesa_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 12);
+    sessionStorage.setItem("simoneTableReservationToken", tableReservationToken);
+  }
+  return tableReservationToken;
+}
 
 async function api(path, options) {
   const res = await fetch(path, {
@@ -294,7 +303,7 @@ async function showTableSelector() {
     </div>`;
 
   try {
-    const tables = await api("/api/tables/availability");
+    const tables = await api("/api/tables/availability?token=" + encodeURIComponent(ensureTableReservationToken()));
     const availableCount = tables.filter(t => t.available).length;
 
     overlay.innerHTML = `
@@ -321,12 +330,35 @@ async function showTableSelector() {
   }
 }
 
-function chooseAvailableTable(n) {
-  if (!Number.isInteger(Number(n)) || Number(n) < 1 || Number(n) > 15) return;
-  activateTableMode(Number(n));
-  const overlay = get("simoneTableSelector");
-  if (overlay) overlay.style.display = "none";
-  history.replaceState(null, "", `/?mesa=${Number(n)}`);
+async function chooseAvailableTable(n) {
+  n = Number(n);
+  if (!Number.isInteger(n) || n < 1 || n > 15) return;
+
+  const token = ensureTableReservationToken();
+
+  try {
+    const res = await fetch(`/api/tables/${n}/reserve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token })
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      alert(data.error || "La mesa acaba de ser ocupada. Elegí otra mesa.");
+      await showTableSelector();
+      return;
+    }
+
+    activateTableMode(n);
+    const overlay = get("simoneTableSelector");
+    if (overlay) overlay.style.display = "none";
+    history.replaceState(null, "", `/?mesa=${n}`);
+  } catch (e) {
+    alert("No se pudo reservar la mesa. Intentá nuevamente.");
+    await showTableSelector();
+  }
 }
 
 
@@ -641,6 +673,7 @@ async function sendOrder() {
     notes,
     delivery,
     tableNumber: delivery === "Consumo en mesa" ? tableNumber : null,
+    tableReservationToken: delivery === "Consumo en mesa" ? tableReservationToken : "",
     payment,
     cashWith
   };
