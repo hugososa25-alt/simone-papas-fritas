@@ -274,7 +274,8 @@ const defaultData = {
     }
   ],
 
-  orders: []
+  orders: [],
+  tableReservations: []
 
 };
 
@@ -325,6 +326,9 @@ async function readDb() {
 
   if (!data.orders)
     data.orders = [];
+
+  if (!Array.isArray(data.tableReservations))
+    data.tableReservations = [];
 
   if (!data.products)
     data.products = defaultData.products;
@@ -452,6 +456,25 @@ function normalizeTableNumber(value) {
 
 function isTableOrder(order) {
   return order && (order.delivery === "Consumo en mesa" || normalizeTableNumber(order.tableNumber || order.table) !== null);
+}
+
+const TABLE_RESERVATION_MINUTES = 10;
+
+function cleanTableReservations(data) {
+  if (!Array.isArray(data.tableReservations)) data.tableReservations = [];
+  const now = Date.now();
+  data.tableReservations = data.tableReservations.filter(r => {
+    const expires = new Date(r.expiresAt || 0).getTime();
+    return r && r.token && normalizeTableNumber(r.tableNumber) !== null && expires > now;
+  });
+}
+
+function tableHasActiveOrders(data, tableNumber) {
+  return (data.orders || []).some(o =>
+    isTableOrder(o) &&
+    Number(o.tableNumber || o.table) === Number(tableNumber) &&
+    o.tableClosed !== true
+  );
 }
 
 
@@ -1059,6 +1082,25 @@ app.post(
         return res.status(400).json({ error: "Mesa no válida" });
       }
 
+      if (tableOrder) {
+        cleanTableReservations(data);
+        const reservationToken = String(req.body?.tableReservationToken || "").trim();
+        const activeAlready = tableHasActiveOrders(data, requestedTable);
+        const reservation = data.tableReservations.find(r => Number(r.tableNumber) === requestedTable);
+
+        if (!activeAlready) {
+          if (!reservationToken || !reservation || reservation.token !== reservationToken) {
+            return res.status(409).json({ error: "La reserva de la mesa venció. Elegí nuevamente una mesa." });
+          }
+        } else if (reservation && reservationToken && reservation.token !== reservationToken) {
+          return res.status(409).json({ error: "La mesa está ocupada" });
+        }
+
+        if (reservationToken) {
+          data.tableReservations = data.tableReservations.filter(r => r.token !== reservationToken);
+        }
+      }
+
       const order = {
 
         id:
@@ -1148,28 +1190,72 @@ app.patch(
 
 /* =========================================================
    MESAS - DISPONIBILIDAD PUBLICA PARA QR UNICO
+   Reserva temporal al seleccionar una mesa
 ========================================================= */
 
 app.get(
   "/api/tables/availability",
   asyncRoute(async (req, res) => {
     const data = await readDb();
-    const tableOrders = data.orders.filter(isTableOrder);
+    cleanTableReservations(data);
+    const token = String(req.query?.token || "").trim();
 
     const tables = Array.from({ length: 15 }, (_, i) => {
       const tableNumber = i + 1;
-      const activeOrders = tableOrders.filter(o =>
-        Number(o.tableNumber || o.table) === tableNumber &&
-        o.tableClosed !== true
-      );
+      const occupied = tableHasActiveOrders(data, tableNumber);
+      const reservation = data.tableReservations.find(r => Number(r.tableNumber) === tableNumber);
+      const mine = Boolean(token && reservation && reservation.token === token);
 
       return {
         tableNumber,
-        available: activeOrders.length === 0
+        available: !occupied && (!reservation || mine),
+        reserved: Boolean(reservation && !mine),
+        mine
       };
     });
 
+    await writeDb(data);
     res.json(tables);
+  })
+);
+
+app.post(
+  "/api/tables/:number/reserve",
+  asyncRoute(async (req, res) => {
+    const tableNumber = normalizeTableNumber(req.params.number);
+    const token = String(req.body?.token || "").trim();
+    if (tableNumber === null || !token) return res.status(400).json({ error: "Reserva no válida" });
+
+    const data = await readDb();
+    cleanTableReservations(data);
+
+    if (tableHasActiveOrders(data, tableNumber)) {
+      return res.status(409).json({ error: "La mesa ya está ocupada" });
+    }
+
+    const other = data.tableReservations.find(r => Number(r.tableNumber) === tableNumber && r.token !== token);
+    if (other) return res.status(409).json({ error: "La mesa acaba de ser reservada" });
+
+    data.tableReservations = data.tableReservations.filter(r => r.token !== token);
+    const expiresAt = new Date(Date.now() + TABLE_RESERVATION_MINUTES * 60 * 1000).toISOString();
+    data.tableReservations.push({ tableNumber, token, expiresAt });
+    await writeDb(data);
+
+    res.json({ ok: true, tableNumber, expiresAt });
+  })
+);
+
+app.post(
+  "/api/tables/:number/release-reservation",
+  asyncRoute(async (req, res) => {
+    const tableNumber = normalizeTableNumber(req.params.number);
+    const token = String(req.body?.token || "").trim();
+    if (tableNumber === null || !token) return res.status(400).json({ error: "Reserva no válida" });
+    const data = await readDb();
+    cleanTableReservations(data);
+    data.tableReservations = data.tableReservations.filter(r => !(Number(r.tableNumber) === tableNumber && r.token === token));
+    await writeDb(data);
+    res.json({ ok: true });
   })
 );
 
