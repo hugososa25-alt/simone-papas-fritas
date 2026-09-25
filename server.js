@@ -442,9 +442,14 @@ app.get(
   asyncRoute(
     async (req, res) => {
 
-      res.json(
-        await readDb()
-      );
+      const data = await readDb();
+
+      res.json({
+        products: data.products || [],
+        toppings: data.toppings || [],
+        sauces: data.sauces || [],
+        categories: data.categories || []
+      });
 
     }
   )
