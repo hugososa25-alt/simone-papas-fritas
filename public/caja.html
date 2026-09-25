@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Caja - Simone Papas Fritas</title>
+<style>
+:root{--yellow:#f6c900;--ink:#181818;--muted:#6b6b6b;--bg:#f5f2e9;--card:#fff;--red:#c92d2d;--green:#20834a;--line:#ded9cb}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:#fff;border-bottom:1px solid var(--line);padding:18px 28px;display:flex;align-items:center;justify-content:space-between;gap:20px;position:sticky;top:0;z-index:5}
+.brand{display:flex;align-items:center;gap:14px}.mark{width:48px;height:48px;border-radius:50%;background:var(--yellow);display:grid;place-items:center;font-size:25px}.brand h1{font-size:22px;margin:0}.brand p{margin:3px 0 0;color:var(--muted);font-size:13px}.status{font-size:13px;font-weight:700}.status span{margin-left:14px}.ok{color:var(--green)}
+main{max-width:1280px;margin:auto;padding:24px}.topline{display:flex;align-items:end;justify-content:space-between;margin-bottom:16px}.topline h2{margin:0;font-size:25px}.topline p{margin:5px 0 0;color:var(--muted)}
+.tables{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.table{background:var(--card);border:2px solid var(--line);border-radius:18px;padding:18px;min-height:130px;cursor:pointer;transition:.15s}.table:hover{transform:translateY(-2px);border-color:#bcb5a4}.table .n{font-size:25px;font-weight:900}.table .state{display:inline-block;margin-top:12px;padding:7px 11px;border-radius:999px;background:#efede7;font-weight:800;font-size:13px}.table .sub{margin-top:10px;color:var(--muted);font-size:13px}.table.pending{border-color:#e8b1b1}.table.pending .state{background:#fde8e8;color:var(--red)}.table.paid{border-color:#a8d6bb}.table.paid .state{background:#e4f5ea;color:var(--green)}.table.busy{border-color:#ecd77e}.table.busy .state{background:#fff3bf;color:#6e5900}
+.detail{margin-top:22px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px}.detail-head{display:flex;justify-content:space-between;gap:20px;align-items:center;border-bottom:1px solid var(--line);padding-bottom:15px}.detail h3{margin:0;font-size:22px}.empty{padding:32px 10px;text-align:center;color:var(--muted)}.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;color:var(--muted);font-size:13px}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;background:#bbb}.dot.red{background:var(--red)}.dot.green{background:var(--green)}.dot.yellow{background:#d9b100}
+.notice{background:#fff8d7;border:1px solid #ead36a;border-radius:12px;padding:12px 14px;font-size:13px;font-weight:700}
+@media(max-width:850px){.tables{grid-template-columns:repeat(3,1fr)}header{padding:15px}.status{display:none}main{padding:16px}}@media(max-width:560px){.tables{grid-template-columns:repeat(2,1fr)}.topline{display:block}.notice{margin-top:12px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="mark">🍟</div><div><h1>SIMONE · CAJA</h1><p>Control de consumo en mesa</p></div></div>
+  <div class="status"><span class="ok">● Sistema en línea</span><span>🖨️ XP-80C</span></div>
+</header>
+<main>
+  <div class="topline"><div><h2>Mesas</h2><p>12 mesas del local</p></div><div class="notice">VERSIÓN DE PRUEBA · todavía no recibe pedidos reales</div></div>
+  <section class="tables" id="tables"></section>
+  <div class="legend"><span><i class="dot"></i>Libre</span><span><i class="dot red"></i>Pendiente de pago</span><span><i class="dot green"></i>Pagado / preparar</span><span><i class="dot yellow"></i>Ocupada</span></div>
+  <section class="detail"><div class="detail-head"><h3>Detalle de mesa</h3><b id="selected">Ninguna seleccionada</b></div><div class="empty" id="detail">Seleccioná una mesa para ver sus pedidos.</div></section>
+</main>
+<script>
+const tables=document.getElementById('tables');
+for(let i=1;i<=12;i++){
+ const el=document.createElement('div'); el.className='table';
+ el.innerHTML=`<div class="n">Mesa ${i}</div><span class="state">Libre</span><div class="sub">Sin pedidos pendientes</div>`;
+ el.onclick=()=>{document.getElementById('selected').textContent='Mesa '+i;document.getElementById('detail').innerHTML='<b>Mesa '+i+' libre</b><br><br>En la próxima etapa acá aparecerán los pedidos, total, Confirmar pago y Liberar mesa.'};
+ tables.appendChild(el);
+}
+</script>
+</body>
+</html>
