@@ -1075,7 +1075,7 @@ loadMenu().then(() => {
 
 /* ==========================================
    ACTUALIZACION AUTOMATICA DEL MENU
-   - Consulta cambios cada 15 segundos
+   - Consulta cambios cada 60 segundos
    - No recarga la pagina
    - Conserva carrito y seleccion del cliente
 ========================================== */
@@ -1114,5 +1114,4 @@ async function refreshMenuAutomatically() {
   }
 }
 
-setInterval(refreshMenuAutomatically, 15000);
-
+setInterval(refreshMenuAutomatically, 60000);
