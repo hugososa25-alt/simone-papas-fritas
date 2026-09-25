@@ -8,6 +8,7 @@ let selectedSauces = [];
 let itemQty = 1;
 let cart = [];
 let delivery = "Envío a domicilio";
+let tableNumber = null;
 let availableImages = [];
 
 async function api(path, options) {
@@ -214,6 +215,30 @@ function openCart() {
 
 function closeCart() {
   get("cartDrawer").classList.remove("active");
+}
+
+function detectTableFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get("mesa");
+  const n = Number(raw);
+
+  if (Number.isInteger(n) && n >= 1 && n <= 12) {
+    tableNumber = n;
+    delivery = "Consumo en mesa";
+
+    const btn = get("tableDeliveryButton");
+    if (btn) {
+      btn.style.display = "block";
+      document.querySelectorAll(".delivery button").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+    }
+
+    const notice = get("tableOrderNotice");
+    if (notice) {
+      notice.style.display = "block";
+      notice.textContent = `🪑 Consumo en mesa — Mesa ${tableNumber}`;
+    }
+  }
 }
 
 function setDelivery(v, btn) {
@@ -487,7 +512,14 @@ function renderCart() {
     get("payment").value === "Efectivo"
       ? "block"
       : "none";
+
+  const isTable = delivery === "Consumo en mesa";
+  ["address", "neighborhood", "reference"].forEach(id => {
+    const el = get(id);
+    if (el) el.style.display = isTable ? "none" : "block";
+  });
 }
+
 
 async function sendOrder() {
   if (cart.length === 0) {
@@ -496,8 +528,12 @@ async function sendOrder() {
 
   const name = val("name") || "Sin completar";
   const phone = val("phone") || "Sin completar";
-  const address = val("address") || "Sin completar";
-  const neighborhood = val("neighborhood") || "Sin completar";
+  const address = delivery === "Consumo en mesa"
+    ? `Mesa ${tableNumber}`
+    : (val("address") || "Sin completar");
+  const neighborhood = delivery === "Consumo en mesa"
+    ? "Consumo en mesa"
+    : (val("neighborhood") || "Sin completar");
   const reference = val("reference") || "Sin referencia";
   const notes = val("notes") || "Sin aclaraciones";
   const payment = get("payment").value;
@@ -515,6 +551,7 @@ async function sendOrder() {
     total: cartTotal(),
     notes,
     delivery,
+    tableNumber: delivery === "Consumo en mesa" ? tableNumber : null,
     payment,
     cashWith
   };
@@ -552,11 +589,13 @@ async function sendOrder() {
   msg +=
     `Aclaraciones: ${notes}%0A%0A` +
     `ENTREGA:%0A` +
-    `Modalidad: ${delivery}%0A` +
+    `Modalidad: ${delivery}${delivery === "Consumo en mesa" ? ` - Mesa ${tableNumber}` : ""}%0A` +
     `Dirección: ${
       delivery === "Envío a domicilio"
         ? address
-        : "Retira por Madariaga 809"
+        : delivery === "Consumo en mesa"
+          ? `Mesa ${tableNumber}`
+          : "Retira por Madariaga 809"
     }%0A`;
 
   if (delivery === "Envío a domicilio") {
@@ -589,12 +628,15 @@ async function sendOrder() {
 
   await loadMenu();
 
-  window.open(
-    "https://wa.me/5493772584075?text=" + msg,
-    "_blank"
-  );
-
-  alert("Pedido guardado como #" + res.id);
+  if (delivery === "Consumo en mesa") {
+    alert(`Pedido #${res.id} enviado. Acercate a caja para confirmar el pago. Mesa ${tableNumber}.`);
+  } else {
+    window.open(
+      "https://wa.me/5493772584075?text=" + msg,
+      "_blank"
+    );
+    alert("Pedido guardado como #" + res.id);
+  }
 
   cart = [];
   closeCart();
@@ -1070,6 +1112,8 @@ window.onload=function(){setTimeout(function(){window.print();},250);};
 
 loadMenu().then(() => {
   lastMenuSnapshot = JSON.stringify(menu);
+  detectTableFromUrl();
+  render();
   checkAdminRoute();
 });
 
