@@ -20,6 +20,15 @@ const pool = new Pool({
 });
 
 app.use(express.json({ limit: "10mb" }));
+// Cache largo solo para imagenes de productos.
+app.use(
+  "/img",
+  express.static(path.join(__dirname, "public", "img"), {
+    maxAge: "30d",
+    immutable: true
+  })
+);
+
 app.use(express.static(path.join(__dirname, "public")));
 
 
