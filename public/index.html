@@ -18,7 +18,7 @@
         <h1>🍟 Armá tu pedido</h1>
         <p>Elegí varios productos, personalizalos y mandá todo junto por WhatsApp.</p>
       </div>
-      <button class="cart-pill" onclick="openCart()">🛒 Carrito: <span id="cartCount">0</span></button>
+      <span id="cartCount" style="display:none;">0</span>
     </section>
 
     <section class="layout">
@@ -68,12 +68,7 @@
           <button class="btn" onclick="addToCart()">🛒 Agregar al carrito</button>
         </section>
 
-        <section class="benefits">
-          <div class="benefit">⭐ <b>Productos frescos</b><span>Seleccionamos lo mejor para vos.</span></div>
-          <div class="benefit">⚡ <b>Preparación rápida</b><span>Tu pedido listo en pocos minutos.</span></div>
-          <div class="benefit">🟢 <b>Pedido por WhatsApp</b><span>Fácil, rápido y seguro.</span></div>
-          <div class="benefit">💛 <b>Hecho con pasión</b><span>Cada pedido como si fuera nuestro.</span></div>
-        </section>
+
 
       </div>
 
@@ -87,6 +82,11 @@
         <button class="btn green" onclick="openCart()">Finalizar pedido</button>
       </aside>
     </section>
+    <button id="mobileCartBar" class="mobile-cart-bar" onclick="openCart()" style="display:none;">
+      <span>🛒 <b>VER CARRITO (<span id="mobileCartCount">0</span>)</b></span>
+      <span id="mobileCartTotal">$0</span>
+      <span>→</span>
+    </button>
   </main>
 
 
@@ -456,6 +456,13 @@
       >
         PAGAR CON MERCADO PAGO
       </a>
+      <div class="mp-receipt-box">
+        <p><b>¿Ya realizaste el pago?</b></p>
+        <p class="hint">Adjuntá el comprobante de Mercado Pago para que Caja pueda verificarlo.</p>
+        <label class="receipt-button" for="paymentReceipt">📎 SUBIR COMPROBANTE</label>
+        <input id="paymentReceipt" type="file" accept="image/*" onchange="handlePaymentReceipt(this)" style="display:none;">
+        <div id="paymentReceiptStatus" class="receipt-status">Todavía no adjuntaste un comprobante.</div>
+      </div>
     </div>
 
 
