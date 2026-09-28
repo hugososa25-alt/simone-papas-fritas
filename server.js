@@ -361,6 +361,10 @@ async function readDb() {
       product.categoryId = 1;
       needsSave = true;
     }
+    if (!["both", "table", "takeaway"].includes(product.publication)) {
+      product.publication = "both";
+      needsSave = true;
+    }
   });
 
   if (needsSave) {
@@ -617,6 +621,14 @@ app.patch(
               req.body.active
             );
 
+      if (req.body.publication !== undefined) {
+        const publication = String(req.body.publication);
+        if (!["both", "table", "takeaway"].includes(publication)) {
+          return res.status(400).json({ error: "Publicación no válida" });
+        }
+        item.publication = publication;
+      }
+
       await writeDb(data);
 
       res.json({
@@ -647,7 +659,8 @@ app.post(
         mode,
         categoryId,
         detail,
-        image
+        image,
+        publication
       } = req.body;
 
       if (!name || !price) {
@@ -703,7 +716,10 @@ app.post(
           image ||
           "img/hero_box.png",
 
-        active: true
+        active: true,
+        publication: ["both", "table", "takeaway"].includes(String(publication || "both"))
+          ? String(publication || "both")
+          : "both"
 
       };
 
