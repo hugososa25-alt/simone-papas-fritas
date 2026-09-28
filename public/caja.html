@@ -87,7 +87,19 @@ function renderTables(){
   </div>`).join('');
 }
 
-function selectTable(n){selectedTable=n;renderTables();renderDetail()}
+function selectTable(n){
+  selectedTable=n;
+  renderTables();
+  renderDetail();
+
+  // Al seleccionar una mesa, baja automaticamente al detalle.
+  requestAnimationFrame(()=>{
+    const detailSection=document.querySelector('.detail');
+    if(detailSection){
+      detailSection.scrollIntoView({behavior:'smooth',block:'start'});
+    }
+  });
+}
 
 function renderDetail(){
   const selected=document.getElementById('selected');
