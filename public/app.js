@@ -99,7 +99,12 @@ function val(id) {
 }
 
 function activeProducts() {
-  return menu.products.filter(p => p.active);
+  return menu.products.filter(p => {
+    if (!p.active) return false;
+    const publication = p.publication || "both";
+    if (tableNumber !== null) return publication !== "takeaway";
+    return publication !== "table";
+  });
 }
 
 function activeToppings() {
@@ -874,6 +879,7 @@ async function sendOrder() {
 
 function renderAdmin() {
   if (!get("adminProducts")) return;
+  ensureNewProductPublicationSelector();
 
   const newProductCategory = get("newProductCategory");
   if (newProductCategory) {
@@ -911,6 +917,12 @@ function renderAdmin() {
           <option value="toppings" ${p.mode === "toppings" ? "selected" : ""}>Toppings + Salsas</option>
           <option value="solo_salsas" ${p.mode === "solo_salsas" ? "selected" : ""}>Solo Salsas</option>
           <option value="directo" ${p.mode === "directo" ? "selected" : ""}>Sin personalización</option>
+        </select>
+
+        <select onchange="updateProduct(${p.id},{publication:this.value})" title="Dónde publicar">
+          <option value="both" ${(p.publication || "both") === "both" ? "selected" : ""}>Mesas + Llevar/Delivery</option>
+          <option value="table" ${p.publication === "table" ? "selected" : ""}>Solo Mesas</option>
+          <option value="takeaway" ${p.publication === "takeaway" ? "selected" : ""}>Solo Llevar/Delivery</option>
         </select>
 
         <button
@@ -1130,6 +1142,25 @@ async function updateSauce(id, data) {
    imagen
 ========================================== */
 
+function ensureNewProductPublicationSelector() {
+  if (get("newProductPublication")) return;
+  const mode = get("newProductMode");
+  if (!mode || !mode.parentNode) return;
+
+  const wrap = document.createElement("div");
+  wrap.style.marginTop = "12px";
+  wrap.innerHTML = `
+    <label style="display:block;font-weight:800;margin-bottom:6px;">¿Dónde publicar?</label>
+    <select id="newProductPublication" style="width:100%;padding:11px;border-radius:10px;">
+      <option value="both">Mesas + Llevar/Delivery</option>
+      <option value="table">Solo Mesas</option>
+      <option value="takeaway">Solo Llevar/Delivery</option>
+    </select>
+    <small style="display:block;margin-top:5px;opacity:.75;">Si no elegís una opción especial, se publica en ambos.</small>
+  `;
+  mode.insertAdjacentElement("afterend", wrap);
+}
+
 async function addProduct() {
 
   const name =
@@ -1151,6 +1182,10 @@ async function addProduct() {
     ? Number(get("newProductCategory").value)
     : 1;
 
+  const publication = get("newProductPublication")
+    ? get("newProductPublication").value
+    : "both";
+
   if (!name || !price) {
     return alert("Completá nombre y precio");
   }
@@ -1163,7 +1198,8 @@ async function addProduct() {
       detail,
       mode,
       image,
-      categoryId
+      categoryId,
+      publication
     })
   });
 
