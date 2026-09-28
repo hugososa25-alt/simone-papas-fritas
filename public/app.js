@@ -629,10 +629,23 @@ function renderCart() {
       cart.length > 0 ? "block" : "none";
   }
 
+  const selectedPayment = get("payment").value;
+
   get("cashWith").style.display =
-    get("payment").value === "Efectivo"
+    selectedPayment === "Efectivo"
       ? "block"
       : "none";
+
+  const mpBox = get("mercadoPagoBox");
+  const mpTotal = get("mercadoPagoTotal");
+  const mpNote = get("mercadoPagoDeliveryNote");
+  if (mpBox) mpBox.style.display = selectedPayment === "Mercado Pago" ? "block" : "none";
+  if (mpTotal) mpTotal.textContent = `Total de productos: ${money(cartTotal())}`;
+  if (mpNote) {
+    mpNote.textContent = delivery === "Envío a domicilio"
+      ? "El costo de envío se confirma según tu dirección y no está incluido en este total."
+      : "Este es el total a abonar.";
+  }
 
   const isTable = delivery === "Consumo en mesa";
   ["address", "neighborhood", "reference"].forEach(id => {
@@ -729,10 +742,8 @@ async function sendOrder() {
     `PAGO:%0A` +
     `Forma de pago: ${payment}%0A`;
 
-  if (payment === "Transferencia") {
-    msg +=
-      "Alias: lili.curuzu.colon%0A" +
-      "Titular: Sogaray Lilian Ines%0A";
+  if (payment === "Mercado Pago") {
+    msg += "Link de pago: https://link.mercadopago.com.ar/habituemaxikiosco%0A";
   }
 
   if (payment === "Efectivo" && cashWith) {
@@ -740,8 +751,8 @@ async function sendOrder() {
   }
 
   msg +=
-    `%0AEnvío: Según distancia%0A` +
-    `TOTAL APROXIMADO: ${money(cartTotal())}`;
+    `%0AEnvío: ${delivery === "Envío a domicilio" ? "Según dirección (no incluido)" : "No corresponde"}%0A` +
+    `TOTAL PRODUCTOS: ${money(cartTotal())}`;
 
   const res = await api("/api/orders", {
     method: "POST",
