@@ -111,3 +111,14 @@ input,select,textarea{width:100%;background:#050505;color:white;border:1px solid
 .send-whatsapp-btn{
   display:none;
 }
+
+
+/* ===== Mejoras de avance del pedido ===== */
+.mobile-cart-bar{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:45;width:min(680px,calc(100% - 24px));border:2px solid #ffb900;border-radius:18px;background:linear-gradient(90deg,#ffb900,#ff8e00);color:#111;padding:16px 18px;font-size:17px;font-weight:950;box-shadow:0 10px 35px rgba(0,0,0,.55);align-items:center;justify-content:space-between;gap:10px;cursor:pointer}
+.mobile-cart-bar span:nth-child(2){white-space:nowrap;font-size:18px}
+.mp-receipt-box{margin-top:12px;padding:13px;border:1px solid #2d2d2d;border-radius:13px;background:#0d0d0d}
+.mp-receipt-box p{margin:3px 0 8px}
+.receipt-button{display:block;text-align:center;background:#202020;border:1px solid #555;color:#fff;border-radius:11px;padding:12px;font-weight:900;cursor:pointer}
+.receipt-status{margin-top:9px;font-size:13px;color:#bbb;line-height:1.35}
+.receipt-status.ready{color:#7ee787;font-weight:800}
+@media(max-width:760px){.cart-pill{display:none!important}.cart-side{display:none}.layout{display:block}.app{padding-bottom:105px}.mobile-cart-bar{display:flex}.checkout{padding-bottom:30px}}
