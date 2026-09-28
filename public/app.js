@@ -7,6 +7,13 @@ let selectedToppings = [];
 let selectedSauces = [];
 let itemQty = 1;
 let cart = [];
+let paymentReceiptData = "";
+let paymentReceiptName = "";
+
+try {
+  const savedCart = JSON.parse(sessionStorage.getItem("simoneCart") || "[]");
+  if (Array.isArray(savedCart)) cart = savedCart;
+} catch(e) {}
 let delivery = "Envío a domicilio";
 let tableNumber = null;
 let tableReservationToken = sessionStorage.getItem("simoneTableReservationToken") || "";
@@ -205,7 +212,70 @@ function addToCart() {
 
   resetSelections();
   render();
-  alert("Producto agregado al carrito");
+  showCartToast("✅ Agregado al carrito");
+}
+
+function showCartToast(message) {
+  let toast = document.getElementById("cartToast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "cartToast";
+    toast.style.cssText = "position:fixed;left:50%;bottom:86px;transform:translateX(-50%);z-index:90;background:#19b83e;color:white;padding:12px 18px;border-radius:999px;font-weight:900;box-shadow:0 8px 25px rgba(0,0,0,.45);";
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.style.display = "block";
+  clearTimeout(window.__simoneToastTimer);
+  window.__simoneToastTimer = setTimeout(() => toast.style.display = "none", 1800);
+}
+
+async function handlePaymentReceipt(input) {
+  const file = input && input.files ? input.files[0] : null;
+  const status = get("paymentReceiptStatus");
+  if (!file) {
+    paymentReceiptData = "";
+    paymentReceiptName = "";
+    if (status) { status.textContent = "Todavía no adjuntaste un comprobante."; status.classList.remove("ready"); }
+    return;
+  }
+  if (!file.type.startsWith("image/")) {
+    input.value = "";
+    return alert("El comprobante debe ser una imagen.");
+  }
+  if (status) { status.textContent = "Preparando comprobante..."; status.classList.remove("ready"); }
+  try {
+    paymentReceiptData = await compressReceiptImage(file);
+    paymentReceiptName = file.name || "comprobante.jpg";
+    if (status) { status.textContent = "✅ Comprobante adjuntado: " + paymentReceiptName; status.classList.add("ready"); }
+  } catch(e) {
+    paymentReceiptData = "";
+    paymentReceiptName = "";
+    input.value = "";
+    if (status) status.textContent = "No se pudo cargar el comprobante.";
+    alert("No se pudo preparar el comprobante. Probá con otra imagen.");
+  }
+}
+
+function compressReceiptImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const maxSide = 1200;
+        const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.72));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 function removeCartItem(i) {
@@ -219,11 +289,17 @@ function cartTotal() {
 
 function openCart() {
   get("cartDrawer").classList.add("active");
+  if (!history.state || history.state.simoneView !== "cart") {
+    history.pushState({ simoneView: "cart" }, "", location.href);
+  }
   render();
 }
 
-function closeCart() {
+function closeCart(fromPopState = false) {
   get("cartDrawer").classList.remove("active");
+  if (!fromPopState && history.state && history.state.simoneView === "cart") {
+    history.back();
+  }
 }
 
 function activateTableMode(n) {
@@ -517,8 +593,15 @@ function render() {
     }
   }
 
-  get("cartCount").textContent =
-    cart.reduce((s, i) => s + Number(i.quantity), 0);
+  const totalCartItems = cart.reduce((s, i) => s + Number(i.quantity), 0);
+  get("cartCount").textContent = totalCartItems;
+  const mobileCartBar = get("mobileCartBar");
+  const mobileCartCount = get("mobileCartCount");
+  const mobileCartTotal = get("mobileCartTotal");
+  if (mobileCartCount) mobileCartCount.textContent = totalCartItems;
+  if (mobileCartTotal) mobileCartTotal.textContent = money(cartTotal());
+  if (mobileCartBar) mobileCartBar.style.display = cart.length ? "flex" : "none";
+  try { sessionStorage.setItem("simoneCart", JSON.stringify(cart)); } catch(e) {}
 
   get("toppingsGrid").innerHTML = toppings.map(t => `
     <div
@@ -673,6 +756,10 @@ async function sendOrder() {
   const payment = get("payment").value;
   const cashWith = val("cashWith");
 
+  if (payment === "Mercado Pago" && !paymentReceiptData) {
+    return alert("Adjuntá el comprobante de Mercado Pago para continuar.");
+  }
+
   const order = {
     customer: {
       name,
@@ -688,7 +775,9 @@ async function sendOrder() {
     tableNumber: delivery === "Consumo en mesa" ? tableNumber : null,
     tableReservationToken: delivery === "Consumo en mesa" ? tableReservationToken : "",
     payment,
-    cashWith
+    cashWith,
+    paymentReceipt: payment === "Mercado Pago" ? paymentReceiptData : "",
+    paymentReceiptName: payment === "Mercado Pago" ? paymentReceiptName : ""
   };
 
   let msg = "🍟 NUEVO PEDIDO SIMONE%0A%0A";
@@ -743,7 +832,7 @@ async function sendOrder() {
     `Forma de pago: ${payment}%0A`;
 
   if (payment === "Mercado Pago") {
-    msg += "Link de pago: https://link.mercadopago.com.ar/habituemaxikiosco%0A";
+    msg += "Pago por Mercado Pago - comprobante adjuntado en Simone.%0A";
   }
 
   if (payment === "Efectivo" && cashWith) {
@@ -772,6 +861,13 @@ async function sendOrder() {
   }
 
   cart = [];
+  paymentReceiptData = "";
+  paymentReceiptName = "";
+  sessionStorage.removeItem("simoneCart");
+  const receiptInput = get("paymentReceipt");
+  if (receiptInput) receiptInput.value = "";
+  const receiptStatus = get("paymentReceiptStatus");
+  if (receiptStatus) { receiptStatus.textContent = "Todavía no adjuntaste un comprobante."; receiptStatus.classList.remove("ready"); }
   closeCart();
   render();
 }
@@ -943,6 +1039,12 @@ function renderOrders() {
             <b>Total:</b>
             ${money(o.total)}
           </p>
+
+          ${typeof o.paymentReceipt === "string" && o.paymentReceipt.startsWith("data:image/") ? `
+            <div style="margin:10px 0;padding:10px;border:1px solid #333;border-radius:12px;">
+              <b>📎 Comprobante Mercado Pago</b><br>
+              <img src="${o.paymentReceipt}" alt="Comprobante Pedido #${o.id}" style="margin-top:8px;max-width:220px;max-height:280px;object-fit:contain;border-radius:10px;cursor:pointer;" onclick="window.open(this.src,'_blank')">
+            </div>` : ""}
 
           <div class="order-actions">
 
@@ -1242,6 +1344,20 @@ window.onload=function(){setTimeout(function(){window.print();},250);};
   }
 
 });
+
+// Navegación interna: el primer "Atrás" vuelve dentro de Simone antes de salir.
+(function setupSimoneNavigation() {
+  if (!history.state || !history.state.simoneBase) {
+    history.replaceState({ simoneBase: true }, "", location.href);
+    history.pushState({ simoneView: "home" }, "", location.href);
+  }
+  window.addEventListener("popstate", () => {
+    const drawer = get("cartDrawer");
+    if (drawer && drawer.classList.contains("active")) {
+      closeCart(true);
+    }
+  });
+})();
 
 loadMenu().then(async () => {
   lastMenuSnapshot = JSON.stringify(menu);
