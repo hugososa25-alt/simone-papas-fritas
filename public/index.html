@@ -439,20 +439,23 @@
       id="payment"
       onchange="render()"
     >
-      <option>Transferencia</option>
+      <option>Mercado Pago</option>
       <option>Efectivo</option>
     </select>
 
 
-    <div class="transfer">
-
-      <b>Alias:</b>
-      lili.curuzu.colon
-      <br>
-
-      <b>Titular:</b>
-      Sogaray Lilian Ines
-
+    <div id="mercadoPagoBox" class="transfer">
+      <div id="mercadoPagoTotal" style="font-weight:900;margin-bottom:8px;"></div>
+      <div id="mercadoPagoDeliveryNote" style="margin-bottom:10px;"></div>
+      <a
+        id="mercadoPagoLink"
+        href="https://link.mercadopago.com.ar/habituemaxikiosco"
+        target="_blank"
+        rel="noopener noreferrer"
+        style="display:block;text-align:center;text-decoration:none;background:#009ee3;color:white;font-weight:900;padding:14px 12px;border-radius:12px;"
+      >
+        PAGAR CON MERCADO PAGO
+      </a>
     </div>
 
 
