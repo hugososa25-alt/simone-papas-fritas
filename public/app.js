@@ -200,6 +200,7 @@ function addToCart() {
   cart.push({
     productId: p.id,
     product: p.name,
+    image: p.image || "",
     detail: p.detail || "",
     quantity: itemQty,
     unitPrice: p.price,
