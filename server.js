@@ -284,7 +284,15 @@ const defaultData = {
   ],
 
   orders: [],
-  tableReservations: []
+  tableReservations: [],
+
+  loyalty: {
+    customers: {},
+    rewards: [
+      { id: 1, simones: 3, productId: 2, label: "Cono Clásico + aderezos", active: true },
+      { id: 2, simones: 5, productId: 6, label: "Pollo Crujiente + toppings", active: true }
+    ]
+  }
 
 };
 
@@ -338,6 +346,16 @@ async function readDb() {
 
   if (!Array.isArray(data.tableReservations))
     data.tableReservations = [];
+
+  if (!data.loyalty || typeof data.loyalty !== "object") {
+    data.loyalty = { customers: {}, rewards: [] };
+  }
+  if (!data.loyalty.customers || typeof data.loyalty.customers !== "object") {
+    data.loyalty.customers = {};
+  }
+  if (!Array.isArray(data.loyalty.rewards) || !data.loyalty.rewards.length) {
+    data.loyalty.rewards = JSON.parse(JSON.stringify(defaultData.loyalty.rewards));
+  }
 
   if (!data.products)
     data.products = defaultData.products;
@@ -424,6 +442,89 @@ function asyncRoute(fn) {
 
   };
 
+}
+
+
+
+
+/* =========================================================
+   MIS SIMONES - FUNCIONES AUXILIARES
+========================================================= */
+
+function normalizeLoyaltyPhone(value) {
+  let phone = String(value || "").replace(/\D/g, "");
+  if (phone.startsWith("54")) phone = phone.slice(2);
+  if (phone.startsWith("0")) phone = phone.slice(1);
+  if (phone.startsWith("15")) phone = phone.slice(2);
+  return phone;
+}
+
+function getOrderPhone(order) {
+  const customer = order && typeof order.customer === "object" ? order.customer : {};
+  return normalizeLoyaltyPhone(
+    order?.phone || order?.telefono || order?.customerPhone ||
+    customer?.phone || customer?.telefono || ""
+  );
+}
+
+function validLoyaltyPhone(phone) {
+  return /^3772\d{6}$/.test(String(phone || ""));
+}
+
+function loyaltyCustomer(data, phone) {
+  if (!data.loyalty) data.loyalty = { customers: {}, rewards: [] };
+  if (!data.loyalty.customers) data.loyalty.customers = {};
+  if (!data.loyalty.customers[phone]) {
+    data.loyalty.customers[phone] = { phone, balance: 0, history: [] };
+  }
+  const c = data.loyalty.customers[phone];
+  if (!Array.isArray(c.history)) c.history = [];
+  c.balance = Math.max(0, Number(c.balance) || 0);
+  return c;
+}
+
+function orderTypeLabel(order) {
+  if (isTableOrder(order)) return `Mesa ${normalizeTableNumber(order.tableNumber || order.table) || ""}`.trim();
+  const d = String(order?.delivery || order?.deliveryType || "").toLowerCase();
+  if (d.includes("delivery") || d.includes("envio") || d.includes("envío")) return "Delivery";
+  return "Retiro";
+}
+
+function orderHasEligibleFood(data, order) {
+  const items = Array.isArray(order?.items) ? order.items : [];
+  return items.some(it => {
+    if (it?.loyaltyReward === true || it?.isReward === true) return false;
+    const pid = Number(it?.productId || it?.id);
+    const product = (data.products || []).find(p => Number(p.id) === pid);
+    return product && Number(product.categoryId) === 1;
+  });
+}
+
+function creditSimoneForOrder(data, order) {
+  if (!order || order.loyaltyProcessed === true) return false;
+  const phone = getOrderPhone(order);
+  if (!validLoyaltyPhone(phone)) return false;
+  if (!orderHasEligibleFood(data, order)) {
+    order.loyaltyProcessed = true;
+    order.loyaltyPhone = phone;
+    order.loyaltyEarned = 0;
+    return false;
+  }
+  const customer = loyaltyCustomer(data, phone);
+  customer.balance += 1;
+  customer.history.push({
+    id: Date.now(),
+    createdAt: new Date().toISOString(),
+    type: "earn",
+    amount: 1,
+    orderId: order.id,
+    source: orderTypeLabel(order),
+    balance: customer.balance
+  });
+  order.loyaltyProcessed = true;
+  order.loyaltyPhone = phone;
+  order.loyaltyEarned = 1;
+  return true;
 }
 
 
@@ -1348,6 +1449,8 @@ app.post(
       order.printedAt = null;
     }
 
+    creditSimoneForOrder(data, order);
+
     await writeDb(data);
     res.json({ ok: true, id: order.id, paymentStatus: order.paymentStatus, printStatus: order.printStatus });
   })
@@ -1456,6 +1559,108 @@ app.post(
 
     }
   )
+);
+
+
+/* =========================================================
+   MIS SIMONES - API PUBLICA Y ADMINISTRADOR
+========================================================= */
+
+app.get(
+  "/api/loyalty/:phone",
+  asyncRoute(async (req, res) => {
+    const data = await readDb();
+    const phone = normalizeLoyaltyPhone(req.params.phone);
+    if (!validLoyaltyPhone(phone)) {
+      return res.status(400).json({ error: "Celular no válido. Usá formato 3772XXXXXX, sin 0 y sin 15." });
+    }
+    const customer = loyaltyCustomer(data, phone);
+    const rewards = (data.loyalty.rewards || []).filter(r => r.active !== false);
+    res.json({
+      phone,
+      balance: customer.balance,
+      history: customer.history.slice().reverse(),
+      rewards
+    });
+  })
+);
+
+app.get(
+  "/api/admin/loyalty/rewards",
+  asyncRoute(async (req, res) => {
+    const data = await readDb();
+    res.json(data.loyalty.rewards || []);
+  })
+);
+
+app.post(
+  "/api/admin/loyalty/rewards",
+  asyncRoute(async (req, res) => {
+    const data = await readDb();
+    const simones = Number(req.body?.simones);
+    const productId = Number(req.body?.productId);
+    const product = (data.products || []).find(p => Number(p.id) === productId);
+    if (!Number.isInteger(simones) || simones < 1) return res.status(400).json({ error: "Cantidad de Simones no válida" });
+    if (!product) return res.status(400).json({ error: "Producto no válido" });
+    const reward = {
+      id: nextId(data.loyalty.rewards || []),
+      simones,
+      productId,
+      label: String(req.body?.label || product.name).trim(),
+      active: req.body?.active !== false
+    };
+    data.loyalty.rewards.push(reward);
+    await writeDb(data);
+    res.json({ ok: true, reward });
+  })
+);
+
+app.patch(
+  "/api/admin/loyalty/rewards/:id",
+  asyncRoute(async (req, res) => {
+    const data = await readDb();
+    const reward = (data.loyalty.rewards || []).find(r => Number(r.id) === Number(req.params.id));
+    if (!reward) return res.status(404).json({ error: "Premio no encontrado" });
+    if (req.body?.simones !== undefined) {
+      const n = Number(req.body.simones);
+      if (!Number.isInteger(n) || n < 1) return res.status(400).json({ error: "Cantidad de Simones no válida" });
+      reward.simones = n;
+    }
+    if (req.body?.productId !== undefined) {
+      const pid = Number(req.body.productId);
+      if (!(data.products || []).some(p => Number(p.id) === pid)) return res.status(400).json({ error: "Producto no válido" });
+      reward.productId = pid;
+    }
+    if (req.body?.label !== undefined) reward.label = String(req.body.label).trim();
+    if (req.body?.active !== undefined) reward.active = Boolean(req.body.active);
+    await writeDb(data);
+    res.json({ ok: true, reward });
+  })
+);
+
+app.post(
+  "/api/loyalty/:phone/redeem",
+  asyncRoute(async (req, res) => {
+    const data = await readDb();
+    const phone = normalizeLoyaltyPhone(req.params.phone);
+    if (!validLoyaltyPhone(phone)) return res.status(400).json({ error: "Celular no válido" });
+    const reward = (data.loyalty.rewards || []).find(r => Number(r.id) === Number(req.body?.rewardId) && r.active !== false);
+    if (!reward) return res.status(404).json({ error: "Premio no disponible" });
+    const customer = loyaltyCustomer(data, phone);
+    if (customer.balance < Number(reward.simones)) return res.status(409).json({ error: "No tenés suficientes Simones" });
+    customer.balance -= Number(reward.simones);
+    customer.history.push({
+      id: Date.now(),
+      createdAt: new Date().toISOString(),
+      type: "redeem",
+      amount: -Number(reward.simones),
+      rewardId: reward.id,
+      reward: reward.label,
+      balance: customer.balance
+    });
+    await writeDb(data);
+    res.json({ ok: true, phone, balance: customer.balance, reward });
+  })
 );
 
 
