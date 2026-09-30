@@ -520,7 +520,161 @@ function checkAdminRoute() {
   }
 }
 
+
+
+/* ==========================================
+   MIS SIMONES - CLIENTE Y ADMINISTRADOR
+========================================== */
+let loyaltyPhone = sessionStorage.getItem("simoneLoyaltyPhone") || "";
+let loyaltyData = null;
+
+function normalizeSimonePhone(value) {
+  let phone = String(value || "").replace(/\D/g, "");
+  if (phone.startsWith("54")) phone = phone.slice(2);
+  if (phone.startsWith("0")) phone = phone.slice(1);
+  if (phone.startsWith("15")) phone = phone.slice(2);
+  return phone;
+}
+
+function validSimonePhone(value) {
+  return /^3772\d{6}$/.test(normalizeSimonePhone(value));
+}
+
+function ensureLoyaltyStyles() {
+  if (get("simoneLoyaltyStyles")) return;
+  const style = document.createElement("style");
+  style.id = "simoneLoyaltyStyles";
+  style.textContent = `
+    .simones-promo{margin:16px auto 20px;max-width:980px;background:linear-gradient(135deg,#fff4b8,#ffd52d);color:#171717;border:2px solid #111;border-radius:20px;padding:18px;box-shadow:0 8px 24px rgba(0,0,0,.15)}
+    .simones-promo h2{margin:0 0 6px;font-size:26px}.simones-promo p{margin:5px 0}.simones-btn{border:0;border-radius:12px;background:#111;color:#fff;font-weight:900;padding:12px 18px;cursor:pointer;margin-top:10px}
+    .simones-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px}.simones-box{width:min(620px,100%);max-height:90vh;overflow:auto;background:#fff;color:#171717;border-radius:22px;padding:20px}.simones-close{float:right;border:0;background:#eee;border-radius:999px;width:36px;height:36px;font-size:20px;cursor:pointer}.simones-balance{font-size:42px;font-weight:1000;text-align:center;margin:12px 0}.simones-reward{border:1px solid #ddd;border-radius:14px;padding:12px;margin:10px 0}.simones-reward.available{border:2px solid #20a64a;background:#effbf2}.simones-history{border-top:1px solid #ddd;padding:9px 0}.simones-phone{width:100%;padding:12px;border:1px solid #bbb;border-radius:10px;font-size:17px}.simones-admin{margin-top:24px;padding:16px;border:2px solid #f0c400;border-radius:16px;background:#fffdf2}.simones-admin-row{display:grid;grid-template-columns:90px 1fr 1fr auto;gap:8px;align-items:center;margin:9px 0}.simones-admin-row input,.simones-admin-row select{padding:9px;border:1px solid #bbb;border-radius:8px}.simones-admin-row button{padding:9px;border:0;border-radius:8px;font-weight:800;cursor:pointer}@media(max-width:620px){.simones-admin-row{grid-template-columns:1fr}.simones-balance{font-size:36px}}
+  `;
+  document.head.appendChild(style);
+}
+
+function ensureLoyaltyPromo() {
+  ensureLoyaltyStyles();
+  if (get("simonesPromo")) return;
+  const productsGrid = get("productsGrid");
+  if (!productsGrid || !productsGrid.parentNode) return;
+  const card = document.createElement("div");
+  card.id = "simonesPromo";
+  card.className = "simones-promo";
+  card.innerHTML = `<h2>⭐ JUNTÁ SIMONES</h2><p><b>Sumá 1 Simone por compra</b> de Papas y comidas.</p><p>Canjeá tus Simones por premios y seguí acumulando.</p><button class="simones-btn" onclick="openMisSimones()">VER MIS SIMONES</button>`;
+  productsGrid.parentNode.insertBefore(card, productsGrid);
+}
+
+async function openMisSimones() {
+  ensureLoyaltyStyles();
+  let overlay = get("misSimonesOverlay");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "misSimonesOverlay";
+    overlay.className = "simones-overlay";
+    document.body.appendChild(overlay);
+  }
+  overlay.style.display = "flex";
+  overlay.innerHTML = `<div class="simones-box"><button class="simones-close" onclick="closeMisSimones()">×</button><h2>⭐ Mis Simones</h2><p>Ingresá tu celular para consultar tu saldo.</p><label><b>Celular (sin 0 y sin 15)</b></label><input id="simonesPhoneInput" class="simones-phone" inputmode="numeric" maxlength="10" placeholder="3772XXXXXX" value="${loyaltyPhone}"><button class="simones-btn" style="width:100%" onclick="loadMisSimones()">VER MIS SIMONES</button><div id="simonesContent"></div></div>`;
+  if (loyaltyPhone) await loadMisSimones();
+}
+
+function closeMisSimones() {
+  const overlay = get("misSimonesOverlay");
+  if (overlay) overlay.style.display = "none";
+}
+
+async function loadMisSimones() {
+  const input = get("simonesPhoneInput");
+  const phone = normalizeSimonePhone(input ? input.value : loyaltyPhone);
+  const content = get("simonesContent");
+  if (!validSimonePhone(phone)) {
+    if (content) content.innerHTML = `<p style="color:#b00020;font-weight:800">Ingresá un celular válido: 3772XXXXXX.</p>`;
+    return;
+  }
+  loyaltyPhone = phone;
+  sessionStorage.setItem("simoneLoyaltyPhone", phone);
+  if (input) input.value = phone;
+  try {
+    loyaltyData = await api("/api/loyalty/" + encodeURIComponent(phone));
+    renderMisSimones();
+  } catch(e) {
+    if (content) content.innerHTML = `<p>No se pudo consultar Mis Simones en este momento.</p>`;
+  }
+}
+
+function renderMisSimones() {
+  const content = get("simonesContent");
+  if (!content || !loyaltyData) return;
+  const balance = Number(loyaltyData.balance || 0);
+  const rewards = Array.isArray(loyaltyData.rewards) ? loyaltyData.rewards.slice().sort((a,b)=>Number(a.simones)-Number(b.simones)) : [];
+  const history = Array.isArray(loyaltyData.history) ? loyaltyData.history : [];
+  content.innerHTML = `
+    <div class="simones-balance">${balance} <span style="font-size:20px">Simone${balance === 1 ? "" : "s"}</span></div>
+    <h3>🎁 Premios</h3>
+    ${rewards.length ? rewards.map(r => { const ok = balance >= Number(r.simones); return `<div class="simones-reward ${ok ? "available" : ""}"><b>${Number(r.simones)} Simones → ${r.label}</b><br><small>${ok ? "✅ Premio disponible" : `Te faltan ${Math.max(0, Number(r.simones)-balance)} Simone(s)`}</small>${ok ? `<br><button class="simones-btn" onclick="redeemSimones(${r.id})">CANJEAR</button>` : ""}</div>`; }).join("") : "<p>No hay premios activos.</p>"}
+    <h3>📋 Historial</h3>
+    ${history.length ? history.map(h => `<div class="simones-history"><b>${new Date(h.createdAt).toLocaleDateString("es-AR")}</b> · ${h.type === "redeem" ? (h.reward || "Canje") : `${h.source || "Compra"}${h.orderId ? ` – Pedido #${h.orderId}` : ""}`}<br><b>${Number(h.amount) > 0 ? "+" : ""}${h.amount} Simone${Math.abs(Number(h.amount)) === 1 ? "" : "s"}</b> · Saldo ${h.balance}</div>`).join("") : "<p>Todavía no tenés movimientos.</p>"}
+  `;
+}
+
+async function redeemSimones(rewardId) {
+  if (!loyaltyPhone || !loyaltyData) return;
+  const reward = (loyaltyData.rewards || []).find(r => Number(r.id) === Number(rewardId));
+  if (!reward) return;
+  if (!confirm(`¿Canjear ${reward.simones} Simones por ${reward.label}?`)) return;
+  try {
+    const result = await api(`/api/loyalty/${encodeURIComponent(loyaltyPhone)}/redeem`, { method:"POST", body:JSON.stringify({ rewardId:Number(rewardId) }) });
+    const product = (menu.products || []).find(p => Number(p.id) === Number(result.reward.productId));
+    cart.push({
+      productId: Number(result.reward.productId), product: result.reward.label, image: product?.image || "", detail: "🎁 CANJE MIS SIMONES", quantity: 1, unitPrice: 0, total: 0, mode: "directo", toppings: [], sauces: [], loyaltyReward: true, rewardId: result.reward.id
+    });
+    loyaltyData.balance = result.balance;
+    closeMisSimones();
+    render();
+    openCart();
+    alert("Canje realizado. El premio fue agregado al carrito por $0.");
+  } catch(e) {
+    alert("No se pudo realizar el canje. Verificá tu saldo e intentá nuevamente.");
+  }
+}
+
+async function loadAdminLoyalty() {
+  const box = get("simonesAdminBox");
+  if (!box) return;
+  try {
+    const rewards = await api("/api/admin/loyalty/rewards");
+    box.innerHTML = `<h2>⭐ Programa Mis Simones</h2><p>Configurá los premios que verá el cliente.</p>${rewards.map(r => `<div class="simones-admin-row"><input type="number" min="1" value="${r.simones}" onchange="updateLoyaltyReward(${r.id},{simones:Number(this.value)})"><select onchange="updateLoyaltyReward(${r.id},{productId:Number(this.value)})">${(menu.products||[]).map(p=>`<option value="${p.id}" ${Number(p.id)===Number(r.productId)?"selected":""}>${p.name}</option>`).join("")}</select><input value="${r.label || ""}" onchange="updateLoyaltyReward(${r.id},{label:this.value})"><button onclick="updateLoyaltyReward(${r.id},{active:${r.active===false?"true":"false"}})">${r.active===false?"Pausado":"Activo"}</button></div>`).join("")}<hr><h3>Agregar premio</h3><div class="simones-admin-row"><input id="newRewardSimones" type="number" min="1" placeholder="Simones"><select id="newRewardProduct">${(menu.products||[]).map(p=>`<option value="${p.id}">${p.name}</option>`).join("")}</select><input id="newRewardLabel" placeholder="Nombre del premio"><button onclick="addLoyaltyReward()">AGREGAR</button></div>`;
+  } catch(e) { box.innerHTML = "<p>No se pudieron cargar los premios.</p>"; }
+}
+
+function ensureAdminLoyalty() {
+  if (get("simonesAdminBox")) return;
+  const adminPage = get("adminPage");
+  if (!adminPage) return;
+  const box = document.createElement("div");
+  box.id = "simonesAdminBox";
+  box.className = "simones-admin";
+  adminPage.appendChild(box);
+  loadAdminLoyalty();
+}
+
+async function updateLoyaltyReward(id, data) {
+  await api("/api/admin/loyalty/rewards/" + id, { method:"PATCH", body:JSON.stringify(data) });
+  await loadAdminLoyalty();
+}
+
+async function addLoyaltyReward() {
+  const simones = Number(get("newRewardSimones")?.value || 0);
+  const productId = Number(get("newRewardProduct")?.value || 0);
+  const label = String(get("newRewardLabel")?.value || "").trim();
+  if (!simones || !productId) return alert("Completá cantidad de Simones y producto.");
+  await api("/api/admin/loyalty/rewards", { method:"POST", body:JSON.stringify({simones,productId,label}) });
+  await loadAdminLoyalty();
+}
+
 function render() {
+  ensureLoyaltyPromo();
+  if (get("adminPage")?.classList.contains("active")) ensureAdminLoyalty();
   const p = currentProduct();
 
   const products = activeProducts();
@@ -750,7 +904,15 @@ async function sendOrder() {
   }
 
   const name = val("name") || "Sin completar";
-  const phone = val("phone") || "Sin completar";
+  const rawPhone = val("phone");
+  const phone = normalizeSimonePhone(rawPhone);
+  if (!validSimonePhone(phone)) {
+    return alert("Ingresá tu celular con formato 3772XXXXXX, sin 0 y sin 15.");
+  }
+  const phoneInput = get("phone");
+  if (phoneInput) phoneInput.value = phone;
+  loyaltyPhone = phone;
+  sessionStorage.setItem("simoneLoyaltyPhone", phone);
   const address = delivery === "Consumo en mesa"
     ? `Mesa ${tableNumber}`
     : (val("address") || "Sin completar");
@@ -855,6 +1017,7 @@ async function sendOrder() {
   });
 
   await loadMenu();
+  loyaltyData = null;
 
   if (delivery === "Consumo en mesa") {
     alert(`Pedido #${res.id} enviado. Acercate a caja para confirmar el pago. Mesa ${tableNumber}.`);
