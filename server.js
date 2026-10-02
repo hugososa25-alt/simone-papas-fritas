@@ -1666,6 +1666,46 @@ app.post(
   })
 );
 
+
+app.post(
+  "/api/admin/loyalty/manual-debit",
+  asyncRoute(async (req, res) => {
+    const data = await readDb();
+    const phone = normalizeLoyaltyPhone(req.body?.phone);
+    const amount = Number(req.body?.amount || 1);
+    const reason = String(req.body?.reason || "").trim();
+
+    if (!validLoyaltyPhone(phone)) {
+      return res.status(400).json({ error: "Celular no válido." });
+    }
+    if (!Number.isInteger(amount) || amount < 1 || amount > 20) {
+      return res.status(400).json({ error: "Cantidad no válida." });
+    }
+    if (!reason) {
+      return res.status(400).json({ error: "Indicá el motivo del ajuste." });
+    }
+
+    const customer = loyaltyCustomer(data, phone);
+    if (Number(customer.balance || 0) < amount) {
+      return res.status(400).json({ error: "El cliente no tiene suficientes Simones." });
+    }
+
+    customer.balance -= amount;
+    customer.history.push({
+      id: Date.now(),
+      createdAt: new Date().toISOString(),
+      type: "manual_debit",
+      amount: -amount,
+      source: "Ajuste manual administrador",
+      reason,
+      balance: customer.balance
+    });
+
+    await writeDb(data);
+    res.json({ ok: true, phone, balance: customer.balance, amount });
+  })
+);
+
 app.get(
   "/api/admin/loyalty/rewards",
   asyncRoute(async (req, res) => {
