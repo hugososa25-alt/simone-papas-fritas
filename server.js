@@ -1586,6 +1586,43 @@ app.get(
 );
 
 app.get(
+  "/api/admin/loyalty/customers",
+  asyncRoute(async (req, res) => {
+    const data = await readDb();
+    const customers = Object.values(data.loyalty?.customers || {}).map(customer => {
+      const phone = String(customer.phone || "");
+      const history = Array.isArray(customer.history) ? customer.history : [];
+      const orders = (data.orders || []).filter(order =>
+        normalizeLoyaltyPhone(order?.customer?.phone || "") === phone
+      );
+      const lastOrder = orders.slice().sort((a, b) =>
+        String(b.createdAt || "").localeCompare(String(a.createdAt || ""))
+      )[0];
+      const earned = history.filter(item => Number(item.amount) > 0)
+        .reduce((total, item) => total + Number(item.amount || 0), 0);
+      const redeemed = Math.abs(history.filter(item => Number(item.amount) < 0)
+        .reduce((total, item) => total + Number(item.amount || 0), 0));
+      const lastMovement = history.slice().sort((a, b) =>
+        String(b.createdAt || "").localeCompare(String(a.createdAt || ""))
+      )[0] || null;
+      return {
+        phone,
+        name: lastOrder?.customer?.name || "Sin nombre",
+        balance: Number(customer.balance || 0),
+        earned,
+        redeemed,
+        lastMovement,
+        history
+      };
+    }).sort((a, b) =>
+      Number(b.balance || 0) - Number(a.balance || 0) ||
+      String(a.name).localeCompare(String(b.name))
+    );
+    res.json(customers);
+  })
+);
+
+app.get(
   "/api/admin/loyalty/rewards",
   asyncRoute(async (req, res) => {
     const data = await readDb();
