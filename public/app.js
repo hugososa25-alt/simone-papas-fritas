@@ -547,7 +547,7 @@ function ensureLoyaltyStyles() {
   style.textContent = `
     .simones-promo{margin:16px auto 20px;max-width:980px;background:linear-gradient(135deg,#fff4b8,#ffd52d);color:#171717;border:2px solid #111;border-radius:20px;padding:18px;box-shadow:0 8px 24px rgba(0,0,0,.15)}
     .simones-promo h2{margin:0 0 6px;font-size:26px}.simones-promo p{margin:5px 0}.simones-btn{border:0;border-radius:12px;background:#111;color:#fff;font-weight:900;padding:12px 18px;cursor:pointer;margin-top:10px}
-    .simones-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px}.simones-box{width:min(620px,100%);max-height:90vh;overflow:auto;background:#fff;color:#171717;border-radius:22px;padding:20px}.simones-close{float:right;border:0;background:#eee;border-radius:999px;width:36px;height:36px;font-size:20px;cursor:pointer}.simones-balance{font-size:42px;font-weight:1000;text-align:center;margin:12px 0}.simones-reward{border:1px solid #ddd;border-radius:14px;padding:12px;margin:10px 0}.simones-reward.available{border:2px solid #20a64a;background:#effbf2}.simones-history{border-top:1px solid #ddd;padding:9px 0}.simones-phone{width:100%;padding:12px;border:1px solid #bbb;border-radius:10px;font-size:17px}.simones-admin{margin-top:24px;padding:16px;border:2px solid #f0c400;border-radius:16px;background:#fffdf2}.simones-admin-row{display:grid;grid-template-columns:90px 1fr 1fr auto;gap:8px;align-items:center;margin:9px 0}.simones-admin-row input,.simones-admin-row select{padding:9px;border:1px solid #bbb;border-radius:8px}.simones-admin-row button{padding:9px;border:0;border-radius:8px;font-weight:800;cursor:pointer}@media(max-width:620px){.simones-admin-row{grid-template-columns:1fr}.simones-balance{font-size:36px}}
+    .simones-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px}.simones-box{width:min(620px,100%);max-height:90vh;overflow:auto;background:#fff;color:#171717;border-radius:22px;padding:20px}.simones-close{float:right;border:0;background:#eee;border-radius:999px;width:36px;height:36px;font-size:20px;cursor:pointer}.simones-balance{font-size:42px;font-weight:1000;text-align:center;margin:12px 0}.simones-reward{border:1px solid #ddd;border-radius:14px;padding:12px;margin:10px 0}.simones-reward.available{border:2px solid #20a64a;background:#effbf2}.simones-history{border-top:1px solid #ddd;padding:9px 0}.simones-phone{width:100%;padding:12px;border:1px solid #bbb;border-radius:10px;font-size:17px}.simones-admin{margin-top:24px;padding:16px;border:2px solid #f0c400;border-radius:16px;background:#fffdf2;color:#171717}.simones-admin h2,.simones-admin h3,.simones-admin p,.simones-admin small,.simones-admin b,.simones-admin summary,.simones-admin details{color:#171717}.simones-admin-row{display:grid;grid-template-columns:90px 1fr 1fr auto;gap:8px;align-items:center;margin:9px 0}.simones-admin-row input,.simones-admin-row select{padding:9px;border:1px solid #bbb;border-radius:8px}.simones-admin-row button{padding:9px;border:0;border-radius:8px;font-weight:800;cursor:pointer}@media(max-width:620px){.simones-admin-row{grid-template-columns:1fr}.simones-balance{font-size:36px}}
   `;
   document.head.appendChild(style);
 }
@@ -647,37 +647,66 @@ async function loadAdminLoyalty() {
       api("/api/admin/loyalty/customers")
     ]);
 
+    const movementText = (h) => {
+      if (!h) return "Sin movimientos";
+      if (h.type === "redeem") {
+        return `🎁 Canje: ${h.reward || "Premio"}`;
+      }
+      if (h.type === "manual_credit") {
+        return `➕ Carga manual${h.reason ? " · " + h.reason : ""}`;
+      }
+      return `🛒 ${h.source || "Compra"}${h.orderId ? " · Pedido #" + h.orderId : ""}`;
+    };
+
+    const movementDate = (value) => {
+      if (!value) return "";
+      const d = new Date(value);
+      return Number.isNaN(d.getTime()) ? "" : d.toLocaleString("es-AR");
+    };
+
     const customerHtml = customers.length
       ? customers.map(c => {
           const last = c.lastMovement;
-          const lastText = last
-            ? (last.type === "redeem"
-                ? (last.reward || "Canje")
-                : ((last.source || "Compra") + (last.orderId ? " · Pedido #" + last.orderId : "")))
-            : "Sin movimientos";
-          return `<details class="simones-reward" style="margin:10px 0">
-            <summary style="cursor:pointer;list-style:none">
-              <div style="display:grid;grid-template-columns:minmax(120px,1.4fr) minmax(105px,1fr) 80px;gap:8px;align-items:center">
-                <div><b>${c.name || "Sin nombre"}</b><br><small>${c.phone}</small></div>
-                <div><small>Ganados: ${c.earned || 0} · Canjeados: ${c.redeemed || 0}</small><br><small>${lastText}</small></div>
-                <div style="text-align:right;font-size:20px;font-weight:900">⭐ ${c.balance || 0}</div>
+          return `<details class="simones-reward" style="margin:10px 0;background:#fff;color:#171717">
+            <summary style="cursor:pointer;list-style:none;color:#171717">
+              <div style="display:grid;grid-template-columns:minmax(180px,1.5fr) minmax(180px,1.3fr) 110px;gap:12px;align-items:center;color:#171717">
+                <div>
+                  <b style="font-size:17px;color:#171717">${c.name || "Sin nombre"}</b><br>
+                  <small style="color:#555">📱 ${c.phone}</small>
+                </div>
+                <div>
+                  <b style="color:#171717">Ganados: ${c.earned || 0}</b> · <b style="color:#171717">Canjeados: ${c.redeemed || 0}</b><br>
+                  <small style="color:#555">Último: ${movementText(last)}</small>
+                  ${last?.createdAt ? `<br><small style="color:#777">${movementDate(last.createdAt)}</small>` : ""}
+                </div>
+                <div style="text-align:right">
+                  <div style="font-size:21px;font-weight:900;color:#171717">⭐ ${c.balance || 0}</div>
+                  <small style="color:#555">Saldo</small>
+                </div>
               </div>
+              <div style="margin-top:8px;font-weight:800;color:#8a6500">▼ VER HISTORIAL</div>
             </summary>
-            <div style="margin-top:10px;padding-top:8px;border-top:1px solid #ddd">
+            <div style="margin-top:12px;padding-top:10px;border-top:1px solid #ddd;color:#171717">
               ${(c.history || []).length
-                ? c.history.slice().reverse().map(h => `<div class="simones-history"><b>${new Date(h.createdAt).toLocaleDateString("es-AR")}</b> · ${h.type === "redeem" ? (h.reward || "Canje") : ((h.source || "Compra") + (h.orderId ? " – Pedido #" + h.orderId : ""))}<br><b>${Number(h.amount)>0?"+":""}${h.amount} Simone${Math.abs(Number(h.amount))===1?"":"s"}</b> · Saldo ${h.balance}</div>`).join("")
-                : "<small>Sin movimientos.</small>"}
+                ? c.history.slice().reverse().map(h => `
+                    <div class="simones-history" style="color:#171717">
+                      <b style="color:#171717">${movementDate(h.createdAt)}</b><br>
+                      <span style="color:#333">${movementText(h)}</span><br>
+                      <b style="color:#171717">${Number(h.amount) > 0 ? "+" : ""}${h.amount} Simone${Math.abs(Number(h.amount)) === 1 ? "" : "s"}</b>
+                      <span style="color:#555"> · Saldo después del movimiento: ${h.balance}</span>
+                    </div>`).join("")
+                : "<small style='color:#555'>Sin movimientos.</small>"}
             </div>
           </details>`;
         }).join("")
-      : "<p>Todavía no hay clientes con Simones.</p>";
+      : "<p style='color:#171717'>Todavía no hay clientes con Simones.</p>";
 
     box.innerHTML = `
-      <h2>⭐ Programa Mis Simones</h2>
-      
-      <div class="simones-reward" style="margin:14px 0;padding:14px">
-        <h3 style="margin-top:0">➕ Carga manual de Simones</h3>
-        <p style="margin-top:-4px">Para recuperar una compra anterior o corregir un caso excepcional.</p>
+      <h2 style="color:#171717">⭐ Programa Mis Simones</h2>
+
+      <div class="simones-reward" style="margin:14px 0;padding:14px;background:#fff;color:#171717">
+        <h3 style="margin-top:0;color:#171717">➕ Carga manual de Simones</h3>
+        <p style="margin-top:-4px;color:#555">Para recuperar una compra anterior o corregir un caso excepcional.</p>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
           <input id="manualSimoneName" placeholder="Nombre del cliente">
           <input id="manualSimonePhone" inputmode="numeric" maxlength="10" placeholder="Celular 3772XXXXXX">
@@ -687,24 +716,27 @@ async function loadAdminLoyalty() {
         <button class="simones-btn" style="width:100%;margin-top:10px" onclick="manualCreditSimones()">AGREGAR SIMONES</button>
       </div>
 
-      <h3>👥 Clientes</h3>
-      <p style="margin-top:-6px">Consultá quién está sumando, su saldo y sus canjes.</p>
+      <h3 style="color:#171717">👥 Clientes</h3>
+      <p style="margin-top:-6px;color:#555">Cada fila corresponde a un celular distinto. Tocá VER HISTORIAL para ver si el Simone vino de un pedido, una carga manual o un canje.</p>
+
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0">
-        <div class="simones-reward" style="text-align:center"><small>Clientes</small><br><b style="font-size:22px">${customers.length}</b></div>
-        <div class="simones-reward" style="text-align:center"><small>Simones activos</small><br><b style="font-size:22px">${customers.reduce((n,c)=>n+Number(c.balance||0),0)}</b></div>
-        <div class="simones-reward" style="text-align:center"><small>Canjeados</small><br><b style="font-size:22px">${customers.reduce((n,c)=>n+Number(c.redeemed||0),0)}</b></div>
+        <div class="simones-reward" style="text-align:center;background:#fff;color:#171717"><small style="color:#555">Clientes</small><br><b style="font-size:22px;color:#171717">${customers.length}</b></div>
+        <div class="simones-reward" style="text-align:center;background:#fff;color:#171717"><small style="color:#555">Simones activos</small><br><b style="font-size:22px;color:#171717">${customers.reduce((n,c)=>n+Number(c.balance||0),0)}</b></div>
+        <div class="simones-reward" style="text-align:center;background:#fff;color:#171717"><small style="color:#555">Canjeados</small><br><b style="font-size:22px;color:#171717">${customers.reduce((n,c)=>n+Number(c.redeemed||0),0)}</b></div>
       </div>
+
       <div>${customerHtml}</div>
+
       <hr style="margin:22px 0">
-      <h3>🎁 Premios</h3>
-      <p>Configurá los premios que verá el cliente.</p>
+      <h3 style="color:#171717">🎁 Premios</h3>
+      <p style="color:#555">Configurá los premios que verá el cliente.</p>
       ${rewards.map(r => `<div class="simones-admin-row"><input type="number" min="1" value="${r.simones}" onchange="updateLoyaltyReward(${r.id},{simones:Number(this.value)})"><select onchange="updateLoyaltyReward(${r.id},{productId:Number(this.value)})">${(menu.products||[]).map(p=>`<option value="${p.id}" ${Number(p.id)===Number(r.productId)?"selected":""}>${p.name}</option>`).join("")}</select><input value="${r.label || ""}" onchange="updateLoyaltyReward(${r.id},{label:this.value})"><button onclick="updateLoyaltyReward(${r.id},{active:${r.active===false?"true":"false"}})">${r.active===false?"Pausado":"Activo"}</button></div>`).join("")}
       <hr>
-      <h3>Agregar premio</h3>
+      <h3 style="color:#171717">Agregar premio</h3>
       <div class="simones-admin-row"><input id="newRewardSimones" type="number" min="1" placeholder="Simones"><select id="newRewardProduct">${(menu.products||[]).map(p=>`<option value="${p.id}">${p.name}</option>`).join("")}</select><input id="newRewardLabel" placeholder="Nombre del premio"><button onclick="addLoyaltyReward()">AGREGAR</button></div>
     `;
   } catch(e) {
-    box.innerHTML = "<p>No se pudo cargar el Programa Mis Simones.</p>";
+    box.innerHTML = "<p style='color:#171717'>No se pudo cargar el Programa Mis Simones.</p>";
   }
 }
 
