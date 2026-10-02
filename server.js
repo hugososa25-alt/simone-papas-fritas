@@ -1606,8 +1606,13 @@ app.get(
       )[0];
       const earned = history.filter(item => Number(item.amount) > 0)
         .reduce((total, item) => total + Number(item.amount || 0), 0);
-      const redeemed = Math.abs(history.filter(item => Number(item.amount) < 0)
-        .reduce((total, item) => total + Number(item.amount || 0), 0));
+      // "Canjeados" cuenta solamente premios realmente canjeados.
+      // Los ajustes manuales negativos (manual_debit) NO son canjes.
+      const redeemed = Math.abs(
+        history
+          .filter(item => item.type === "redeem")
+          .reduce((total, item) => total + Number(item.amount || 0), 0)
+      );
       const lastMovement = history.slice().sort((a, b) =>
         String(b.createdAt || "").localeCompare(String(a.createdAt || ""))
       )[0] || null;
