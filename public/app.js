@@ -674,6 +674,19 @@ async function loadAdminLoyalty() {
 
     box.innerHTML = `
       <h2>⭐ Programa Mis Simones</h2>
+      
+      <div class="simones-reward" style="margin:14px 0;padding:14px">
+        <h3 style="margin-top:0">➕ Carga manual de Simones</h3>
+        <p style="margin-top:-4px">Para recuperar una compra anterior o corregir un caso excepcional.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <input id="manualSimoneName" placeholder="Nombre del cliente">
+          <input id="manualSimonePhone" inputmode="numeric" maxlength="10" placeholder="Celular 3772XXXXXX">
+          <input id="manualSimoneAmount" type="number" min="1" max="20" value="1" placeholder="Cantidad">
+          <input id="manualSimoneReason" placeholder="Motivo, ej: Pedido 01/10">
+        </div>
+        <button class="simones-btn" style="width:100%;margin-top:10px" onclick="manualCreditSimones()">AGREGAR SIMONES</button>
+      </div>
+
       <h3>👥 Clientes</h3>
       <p style="margin-top:-6px">Consultá quién está sumando, su saldo y sus canjes.</p>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0">
@@ -704,6 +717,36 @@ function ensureAdminLoyalty() {
   box.className = "simones-admin";
   adminPage.appendChild(box);
   loadAdminLoyalty();
+}
+
+
+async function manualCreditSimones() {
+  const name = String(get("manualSimoneName")?.value || "").trim();
+  const phone = normalizeSimonePhone(get("manualSimonePhone")?.value || "");
+  const amount = Number(get("manualSimoneAmount")?.value || 1);
+  const reason = String(get("manualSimoneReason")?.value || "").trim();
+
+  if (!validSimonePhone(phone)) {
+    return alert("Ingresá un celular válido: 3772XXXXXX.");
+  }
+  if (!Number.isInteger(amount) || amount < 1 || amount > 20) {
+    return alert("La cantidad debe ser entre 1 y 20 Simones.");
+  }
+  if (!reason) {
+    return alert("Indicá el motivo de la carga manual.");
+  }
+  if (!confirm(`¿Agregar ${amount} Simone${amount === 1 ? "" : "s"} al celular ${phone}?`)) return;
+
+  try {
+    const result = await api("/api/admin/loyalty/manual-credit", {
+      method: "POST",
+      body: JSON.stringify({ name, phone, amount, reason })
+    });
+    alert(`Listo. Nuevo saldo: ${result.balance} Simone${Number(result.balance) === 1 ? "" : "s"}.`);
+    await loadAdminLoyalty();
+  } catch (e) {
+    alert("No se pudo realizar la carga manual.");
+  }
 }
 
 async function updateLoyaltyReward(id, data) {
