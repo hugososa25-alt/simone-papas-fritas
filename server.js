@@ -1613,7 +1613,7 @@ app.get(
       )[0] || null;
       return {
         phone,
-        name: lastOrder?.customer?.name || "Sin nombre",
+        name: lastOrder?.customer?.name || c.name || "Sin nombre",
         balance: Number(customer.balance || 0),
         earned,
         redeemed,
@@ -1625,6 +1625,44 @@ app.get(
       String(a.name).localeCompare(String(b.name))
     );
     res.json(customers);
+  })
+);
+
+
+app.post(
+  "/api/admin/loyalty/manual-credit",
+  asyncRoute(async (req, res) => {
+    const data = await readDb();
+    const phone = normalizeLoyaltyPhone(req.body?.phone);
+    const amount = Number(req.body?.amount);
+    const name = String(req.body?.name || "").trim();
+    const reason = String(req.body?.reason || "").trim();
+
+    if (!validLoyaltyPhone(phone)) {
+      return res.status(400).json({ error: "Celular no válido. Usá formato 3772XXXXXX." });
+    }
+    if (!Number.isInteger(amount) || amount < 1 || amount > 20) {
+      return res.status(400).json({ error: "La cantidad debe ser un número entero entre 1 y 20." });
+    }
+    if (!reason) {
+      return res.status(400).json({ error: "Indicá el motivo de la carga manual." });
+    }
+
+    const customer = loyaltyCustomer(data, phone);
+    if (name) customer.name = name;
+    customer.balance += amount;
+    customer.history.push({
+      id: Date.now(),
+      createdAt: new Date().toISOString(),
+      type: "manual_credit",
+      amount,
+      source: "Carga manual administrador",
+      reason,
+      balance: customer.balance
+    });
+
+    await writeDb(data);
+    res.json({ ok: true, phone, balance: customer.balance, amount });
   })
 );
 
