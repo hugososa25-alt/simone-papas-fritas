@@ -655,6 +655,9 @@ async function loadAdminLoyalty() {
       if (h.type === "manual_credit") {
         return `➕ Carga manual${h.reason ? " · " + h.reason : ""}`;
       }
+      if (h.type === "manual_debit") {
+        return `➖ Ajuste manual${h.reason ? " · " + h.reason : ""}`;
+      }
       return `🛒 ${h.source || "Compra"}${h.orderId ? " · Pedido #" + h.orderId : ""}`;
     };
 
@@ -684,7 +687,10 @@ async function loadAdminLoyalty() {
                   <small style="color:#555">Saldo</small>
                 </div>
               </div>
-              <div style="margin-top:8px;font-weight:800;color:#8a6500">▼ VER HISTORIAL</div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+                <span style="font-weight:800;color:#8a6500">▼ VER HISTORIAL</span>
+                ${Number(c.balance || 0) > 0 ? `<button type="button" onclick="event.preventDefault();event.stopPropagation();manualDebitSimone('${c.phone}')" style="border:0;border-radius:8px;padding:8px 12px;background:#111;color:#fff;font-weight:800;cursor:pointer">− QUITAR 1 SIMONE</button>` : ""}
+              </div>
             </summary>
             <div style="margin-top:12px;padding-top:10px;border-top:1px solid #ddd;color:#171717">
               ${(c.history || []).length
@@ -751,6 +757,26 @@ function ensureAdminLoyalty() {
   loadAdminLoyalty();
 }
 
+
+
+async function manualDebitSimone(phone) {
+  const reason = prompt("Motivo para quitar 1 Simone:", "Corrección / prueba");
+  if (reason === null) return;
+  if (!String(reason).trim()) return alert("Indicá el motivo.");
+
+  if (!confirm(`¿Quitar 1 Simone al celular ${phone}?`)) return;
+
+  try {
+    const result = await api("/api/admin/loyalty/manual-debit", {
+      method: "POST",
+      body: JSON.stringify({ phone, amount: 1, reason: String(reason).trim() })
+    });
+    alert(`Listo. Nuevo saldo: ${result.balance} Simone${Number(result.balance) === 1 ? "" : "s"}.`);
+    await loadAdminLoyalty();
+  } catch (e) {
+    alert("No se pudo quitar el Simone. Verificá que el cliente tenga saldo.");
+  }
+}
 
 async function manualCreditSimones() {
   const name = String(get("manualSimoneName")?.value || "").trim();
@@ -1273,8 +1299,27 @@ function renderAdmin() {
     `).join("");
 }
 
+
+function ensureSimonesJumpInOrders() {
+  const ordersList = get("ordersList");
+  if (!ordersList || get("jumpToMisSimones")) return;
+
+  const btn = document.createElement("button");
+  btn.id = "jumpToMisSimones";
+  btn.type = "button";
+  btn.className = "btn";
+  btn.style.cssText = "margin:0 0 14px 0;padding:11px 16px;font-weight:900;";
+  btn.textContent = "⭐ IR A MIS SIMONES";
+  btn.onclick = function() {
+    const box = get("simonesAdminBox");
+    if (box) box.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  ordersList.parentNode.insertBefore(btn, ordersList);
+}
+
 function renderOrders() {
   if (!get("ordersList")) return;
+  ensureSimonesJumpInOrders();
 
   const today =
     new Date().toISOString().slice(0, 10);
