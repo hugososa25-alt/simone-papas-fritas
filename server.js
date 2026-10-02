@@ -1260,6 +1260,12 @@ app.post(
         order
       );
 
+      // MIS SIMONES:
+      // Cada pedido normal que incluya al menos un producto de
+      // "Papas y comidas" acredita automaticamente 1 Simone
+      // al celular del pedido. Maximo 1 Simone por pedido.
+      creditSimoneForOrder(data, order);
+
       await writeDb(data);
 
       res.json({
