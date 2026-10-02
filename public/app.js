@@ -642,9 +642,57 @@ async function loadAdminLoyalty() {
   const box = get("simonesAdminBox");
   if (!box) return;
   try {
-    const rewards = await api("/api/admin/loyalty/rewards");
-    box.innerHTML = `<h2>⭐ Programa Mis Simones</h2><p>Configurá los premios que verá el cliente.</p>${rewards.map(r => `<div class="simones-admin-row"><input type="number" min="1" value="${r.simones}" onchange="updateLoyaltyReward(${r.id},{simones:Number(this.value)})"><select onchange="updateLoyaltyReward(${r.id},{productId:Number(this.value)})">${(menu.products||[]).map(p=>`<option value="${p.id}" ${Number(p.id)===Number(r.productId)?"selected":""}>${p.name}</option>`).join("")}</select><input value="${r.label || ""}" onchange="updateLoyaltyReward(${r.id},{label:this.value})"><button onclick="updateLoyaltyReward(${r.id},{active:${r.active===false?"true":"false"}})">${r.active===false?"Pausado":"Activo"}</button></div>`).join("")}<hr><h3>Agregar premio</h3><div class="simones-admin-row"><input id="newRewardSimones" type="number" min="1" placeholder="Simones"><select id="newRewardProduct">${(menu.products||[]).map(p=>`<option value="${p.id}">${p.name}</option>`).join("")}</select><input id="newRewardLabel" placeholder="Nombre del premio"><button onclick="addLoyaltyReward()">AGREGAR</button></div>`;
-  } catch(e) { box.innerHTML = "<p>No se pudieron cargar los premios.</p>"; }
+    const [rewards, customers] = await Promise.all([
+      api("/api/admin/loyalty/rewards"),
+      api("/api/admin/loyalty/customers")
+    ]);
+
+    const customerHtml = customers.length
+      ? customers.map(c => {
+          const last = c.lastMovement;
+          const lastText = last
+            ? (last.type === "redeem"
+                ? (last.reward || "Canje")
+                : ((last.source || "Compra") + (last.orderId ? " · Pedido #" + last.orderId : "")))
+            : "Sin movimientos";
+          return `<details class="simones-reward" style="margin:10px 0">
+            <summary style="cursor:pointer;list-style:none">
+              <div style="display:grid;grid-template-columns:minmax(120px,1.4fr) minmax(105px,1fr) 80px;gap:8px;align-items:center">
+                <div><b>${c.name || "Sin nombre"}</b><br><small>${c.phone}</small></div>
+                <div><small>Ganados: ${c.earned || 0} · Canjeados: ${c.redeemed || 0}</small><br><small>${lastText}</small></div>
+                <div style="text-align:right;font-size:20px;font-weight:900">⭐ ${c.balance || 0}</div>
+              </div>
+            </summary>
+            <div style="margin-top:10px;padding-top:8px;border-top:1px solid #ddd">
+              ${(c.history || []).length
+                ? c.history.slice().reverse().map(h => `<div class="simones-history"><b>${new Date(h.createdAt).toLocaleDateString("es-AR")}</b> · ${h.type === "redeem" ? (h.reward || "Canje") : ((h.source || "Compra") + (h.orderId ? " – Pedido #" + h.orderId : ""))}<br><b>${Number(h.amount)>0?"+":""}${h.amount} Simone${Math.abs(Number(h.amount))===1?"":"s"}</b> · Saldo ${h.balance}</div>`).join("")
+                : "<small>Sin movimientos.</small>"}
+            </div>
+          </details>`;
+        }).join("")
+      : "<p>Todavía no hay clientes con Simones.</p>";
+
+    box.innerHTML = `
+      <h2>⭐ Programa Mis Simones</h2>
+      <h3>👥 Clientes</h3>
+      <p style="margin-top:-6px">Consultá quién está sumando, su saldo y sus canjes.</p>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0">
+        <div class="simones-reward" style="text-align:center"><small>Clientes</small><br><b style="font-size:22px">${customers.length}</b></div>
+        <div class="simones-reward" style="text-align:center"><small>Simones activos</small><br><b style="font-size:22px">${customers.reduce((n,c)=>n+Number(c.balance||0),0)}</b></div>
+        <div class="simones-reward" style="text-align:center"><small>Canjeados</small><br><b style="font-size:22px">${customers.reduce((n,c)=>n+Number(c.redeemed||0),0)}</b></div>
+      </div>
+      <div>${customerHtml}</div>
+      <hr style="margin:22px 0">
+      <h3>🎁 Premios</h3>
+      <p>Configurá los premios que verá el cliente.</p>
+      ${rewards.map(r => `<div class="simones-admin-row"><input type="number" min="1" value="${r.simones}" onchange="updateLoyaltyReward(${r.id},{simones:Number(this.value)})"><select onchange="updateLoyaltyReward(${r.id},{productId:Number(this.value)})">${(menu.products||[]).map(p=>`<option value="${p.id}" ${Number(p.id)===Number(r.productId)?"selected":""}>${p.name}</option>`).join("")}</select><input value="${r.label || ""}" onchange="updateLoyaltyReward(${r.id},{label:this.value})"><button onclick="updateLoyaltyReward(${r.id},{active:${r.active===false?"true":"false"}})">${r.active===false?"Pausado":"Activo"}</button></div>`).join("")}
+      <hr>
+      <h3>Agregar premio</h3>
+      <div class="simones-admin-row"><input id="newRewardSimones" type="number" min="1" placeholder="Simones"><select id="newRewardProduct">${(menu.products||[]).map(p=>`<option value="${p.id}">${p.name}</option>`).join("")}</select><input id="newRewardLabel" placeholder="Nombre del premio"><button onclick="addLoyaltyReward()">AGREGAR</button></div>
+    `;
+  } catch(e) {
+    box.innerHTML = "<p>No se pudo cargar el Programa Mis Simones.</p>";
+  }
 }
 
 function ensureAdminLoyalty() {
