@@ -16,7 +16,7 @@
     <section class="intro">
       <div>
         <h1>🍟 Armá tu pedido</h1>
-        <p>Elegí varios productos, personalizalos y mandá todo junto por WhatsApp.</p>
+        <p>Elegí tus productos y confirmá el pedido directamente en Simone.</p>
       </div>
       <span id="cartCount" style="display:none;">0</span>
     </section>
@@ -389,7 +389,7 @@
 
     <input id="name" placeholder="Nombre y apellido">
 
-    <input id="phone" placeholder="Teléfono">
+    <input id="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="Celular con característica (ej.: 3772XXXXXX)">
 
     <input id="address" placeholder="Dirección">
 
@@ -458,7 +458,7 @@
       </a>
       <div class="mp-receipt-box">
         <p><b>¿Ya realizaste el pago?</b></p>
-        <p class="hint">Adjuntá el comprobante de Mercado Pago para que Caja pueda verificarlo.</p>
+        <p class="hint">Completá primero tus datos de entrega. Al adjuntar el comprobante, el pedido se registra automáticamente y llega al local. El pago queda pendiente de verificación.</p>
         <label class="receipt-button" for="paymentReceipt">📎 SUBIR COMPROBANTE</label>
         <input id="paymentReceipt" type="file" accept="image/*" onchange="handlePaymentReceipt(this)" style="display:none;">
         <div id="paymentReceiptStatus" class="receipt-status">Todavía no adjuntaste un comprobante.</div>
@@ -472,11 +472,17 @@
     >
 
 
+    <div id="cashConfirmationNotice" role="status" style="display:none;margin:16px 0 12px;padding:15px;border:2px solid #e2a500;border-radius:14px;background:#fff7d6;color:#171717;text-align:center;">
+      <div style="font-size:18px;font-weight:900;">⚠️ ¡FALTA UN ÚLTIMO PASO!</div>
+      <p style="margin:8px 0;">Tu pedido de <b id="cashConfirmationTotal"></b> todavía <b>NO fue enviado al local</b>.</p>
+      <p style="margin:6px 0;font-weight:800;">Presioná el botón verde para confirmar. Pagás al retirar o recibir el pedido.</p>
+    </div>
+    <p style="margin:12px 0;font-weight:700;">El pedido llega directamente al local. No hace falta enviarlo por WhatsApp.</p>
     <button
       class="btn green send-whatsapp-btn"
       onclick="sendOrder()"
     >
-      Enviar pedido por WhatsApp
+      ✅ CONFIRMAR PEDIDO
     </button>
 
   </div>
