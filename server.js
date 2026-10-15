@@ -1194,89 +1194,84 @@ app.get(
 
 app.post(
   "/api/orders",
-
-  asyncRoute(
-    async (req, res) => {
-
-      const data =
-        await readDb();
-
-      const requestedTable = normalizeTableNumber(req.body?.tableNumber || req.body?.table);
-      const tableOrder = req.body?.delivery === "Consumo en mesa" || requestedTable !== null;
-
-      if (tableOrder && requestedTable === null) {
-        return res.status(400).json({ error: "Mesa no válida" });
+  asyncRoute(async (req, res) => {
+    const body = req.body || {};
+    const requestedTable = normalizeTableNumber(body.tableNumber || body.table);
+    const tableOrder = body.delivery === "Consumo en mesa" || requestedTable !== null;
+    if (tableOrder && requestedTable === null) {
+      return res.status(400).json({ error: "Mesa no válida" });
+    }
+    if (!Array.isArray(body.items) || !body.items.length || !body.customer?.name || !body.customer?.phone) {
+      return res.status(400).json({ error: "Faltan datos del pedido" });
+    }
+    if (!tableOrder && body.delivery === "Envío a domicilio" && !String(body.customer?.address || "").trim()) {
+      return res.status(400).json({ error: "Falta dirección de entrega" });
+    }
+    if (!tableOrder && body.payment === "Mercado Pago" &&
+        !String(body.paymentReceipt || "").startsWith("data:image/")) {
+      return res.status(400).json({ error: "Falta comprobante de Mercado Pago" });
+    }
+    const clientRequestId = !tableOrder ? String(body.clientRequestId || "").trim().slice(0, 100) : "";
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      // Bloqueo de la fila: dos envíos simultáneos no generan el mismo pedido dos veces.
+      const result = await client.query("SELECT data FROM simone_store WHERE id = 1 FOR UPDATE");
+      if (!result.rows.length) throw new Error("Base de datos no inicializada");
+      const data = result.rows[0].data;
+      if (!Array.isArray(data.orders)) data.orders = [];
+      if (!Array.isArray(data.tableReservations)) data.tableReservations = [];
+      if (!data.loyalty) data.loyalty = { customers: {}, rewards: [] };
+      if (!data.loyalty.customers) data.loyalty.customers = {};
+      const existing = clientRequestId && data.orders.find(o => o.clientRequestId === clientRequestId);
+      if (existing) {
+        await client.query("COMMIT");
+        return res.json({ ok: true, id: existing.id, duplicate: true });
       }
-
       if (tableOrder) {
         cleanTableReservations(data);
-        const reservationToken = String(req.body?.tableReservationToken || "").trim();
+        const reservationToken = String(body.tableReservationToken || "").trim();
         const activeAlready = tableHasActiveOrders(data, requestedTable);
         const reservation = data.tableReservations.find(r => Number(r.tableNumber) === requestedTable);
-
         if (!activeAlready) {
           if (!reservationToken || !reservation || reservation.token !== reservationToken) {
+            await client.query("ROLLBACK");
             return res.status(409).json({ error: "La reserva de la mesa venció. Elegí nuevamente una mesa." });
           }
         } else if (reservation && reservationToken && reservation.token !== reservationToken) {
+          await client.query("ROLLBACK");
           return res.status(409).json({ error: "La mesa está ocupada" });
         }
-
         if (reservationToken) {
           data.tableReservations = data.tableReservations.filter(r => r.token !== reservationToken);
         }
       }
-
       const order = {
-
-        id:
-          nextId(
-            data.orders
-          ),
-
-        createdAt:
-          new Date()
-            .toISOString(),
-
-        ...req.body,
-
-        delivery: tableOrder ? "Consumo en mesa" : req.body?.delivery,
+        ...body,
+        id: nextId(data.orders),
+        createdAt: new Date().toISOString(),
+        clientRequestId: clientRequestId || undefined,
+        delivery: tableOrder ? "Consumo en mesa" : body.delivery,
         tableNumber: tableOrder ? requestedTable : null,
-        paymentStatus: tableOrder ? "Pendiente" : "No aplica",
+        paymentStatus: tableOrder ? "Pendiente" : (body.payment === "Mercado Pago" ? "Pendiente de verificación" : "Pendiente de cobro"),
         paidAt: null,
-
-        status:
-          tableOrder ? "Pendiente de pago" : "Pendiente",
-
-        printStatus:
-          tableOrder ? "EsperandoPago" : "Pendiente",
-
-        printedAt:
-          null
-
+        status: tableOrder ? "Pendiente de pago" : "Pendiente",
+        printStatus: tableOrder ? "EsperandoPago" : "Pendiente",
+        printedAt: null
       };
-
-      data.orders.push(
-        order
-      );
-
-      // MIS SIMONES:
-      // Cada pedido normal que incluya al menos un producto de
-      // "Papas y comidas" acredita automaticamente 1 Simone
-      // al celular del pedido. Maximo 1 Simone por pedido.
+      data.orders.push(order);
       creditSimoneForOrder(data, order);
-
-      await writeDb(data);
-
-      res.json({
-        ok: true,
-        id: order.id
-      });
-
+      await client.query("UPDATE simone_store SET data = $1::jsonb, updated_at = NOW() WHERE id = 1", [JSON.stringify(data)]);
+      await client.query("COMMIT");
+      return res.json({ ok: true, id: order.id });
+    } catch (error) {
+      try { await client.query("ROLLBACK"); } catch (_) {}
+      throw error;
+    } finally {
+      client.release();
     }
-  )
+  })
 );
-
 
 app.patch(
   "/api/orders/:id",
@@ -1618,7 +1613,7 @@ app.get(
       )[0] || null;
       return {
         phone,
-        name: lastOrder?.customer?.name || c.name || "Sin nombre",
+        name: lastOrder?.customer?.name || customer.name || "Sin nombre",
         balance: Number(customer.balance || 0),
         earned,
         redeemed,
