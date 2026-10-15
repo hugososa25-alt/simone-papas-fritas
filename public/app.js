@@ -216,6 +216,7 @@ function addToCart() {
         : selectedSauces.slice()
   });
 
+  resetOrderRequestId();
   resetSelections();
   render();
   showCartToast("✅ Agregado al carrito");
@@ -253,6 +254,15 @@ async function handlePaymentReceipt(input) {
     paymentReceiptData = await compressReceiptImage(file);
     paymentReceiptName = file.name || "comprobante.jpg";
     if (status) { status.textContent = "✅ Comprobante adjuntado: " + paymentReceiptName; status.classList.add("ready"); }
+    if (delivery !== "Consumo en mesa" && get("payment")?.value === "Mercado Pago") {
+      const missing = orderDataMissing();
+      if (missing) {
+        if (status) status.textContent = "Comprobante listo. " + missing + " Luego tocá CONFIRMAR PEDIDO.";
+        alert(missing + " El comprobante quedó adjuntado. Al completar los datos, tocá CONFIRMAR PEDIDO.");
+      } else {
+        await sendOrder(true);
+      }
+    }
   } catch(e) {
     paymentReceiptData = "";
     paymentReceiptName = "";
@@ -285,6 +295,7 @@ function compressReceiptImage(file) {
 }
 
 function removeCartItem(i) {
+  resetOrderRequestId();
   cart.splice(i, 1);
   render();
 }
@@ -445,6 +456,7 @@ async function chooseAvailableTable(n) {
 
 
 function setDelivery(v, btn) {
+  resetOrderRequestId();
   delivery = v;
 
   document
@@ -538,6 +550,58 @@ function normalizeSimonePhone(value) {
 
 function validSimonePhone(value) {
   return /^3772\d{6}$/.test(normalizeSimonePhone(value));
+}
+
+// Para pedidos aceptamos celulares argentinos de distintas caracteristicas.
+// Mis Simones mantiene su validacion original de 3772.
+function normalizeOrderPhone(value) {
+  let digits = String(value || "").replace(/\D/g, "");
+  if (digits.startsWith("54")) digits = digits.slice(2);
+  if (digits.startsWith("9") && digits.length === 11) digits = digits.slice(1);
+  if (digits.startsWith("0")) digits = digits.slice(1);
+  // Quita el 15 de un celular escrito como 03772 15 XXXXXX.
+  if (digits.length === 12 && digits.slice(4, 6) === "15") digits = digits.slice(0, 4) + digits.slice(6);
+  if (digits.length === 12 && digits.slice(3, 5) === "15") digits = digits.slice(0, 3) + digits.slice(5);
+  return digits;
+}
+function validOrderPhone(value) {
+  const digits = normalizeOrderPhone(value);
+  return /^\d{10}$/.test(digits) && !digits.startsWith("0");
+}
+
+let orderSubmitting = false;
+function currentOrderRequestId() {
+  let id = sessionStorage.getItem("simoneOrderRequestId");
+  if (!id) {
+    id = "pedido_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 14);
+    sessionStorage.setItem("simoneOrderRequestId", id);
+  }
+  return id;
+}
+function resetOrderRequestId() {
+  sessionStorage.removeItem("simoneOrderRequestId");
+}
+function orderDataMissing() {
+  if (!cart.length) return "Agregá productos al carrito.";
+  if (!val("name")) return "Completá tu nombre.";
+  if (!validOrderPhone(val("phone"))) return "Ingresá un teléfono argentino válido con código de área.";
+  if (delivery === "Envío a domicilio" && !val("address")) return "Completá la dirección de entrega.";
+  if (delivery === "Envío a domicilio" && !val("neighborhood")) return "Completá el barrio.";
+  return "";
+}
+function updateCheckoutButton() {
+  const button = document.querySelector(".send-whatsapp-btn");
+  if (!button) return;
+  const isCash = get("payment")?.value === "Efectivo";
+  const isTable = delivery === "Consumo en mesa";
+  button.textContent = orderSubmitting
+    ? "⏳ GUARDANDO PEDIDO..."
+    : (isCash && !isTable ? "✅ CONFIRMAR PEDIDO EN EFECTIVO" : "✅ CONFIRMAR PEDIDO");
+  button.disabled = orderSubmitting;
+  const notice = get("cashConfirmationNotice");
+  if (notice) notice.style.display = (isCash && !isTable && cart.length) ? "block" : "none";
+  const summary = get("cashConfirmationTotal");
+  if (summary) summary.textContent = money(cartTotal());
 }
 
 function ensureLoyaltyStyles() {
@@ -1020,6 +1084,7 @@ function renderCart() {
     whatsappButton.style.display =
       cart.length > 0 ? "block" : "none";
   }
+  updateCheckoutButton();
 
   const selectedPayment = get("payment").value;
 
@@ -1047,21 +1112,28 @@ function renderCart() {
 }
 
 
-async function sendOrder() {
+async function sendOrder(automatic = false) {
+  if (orderSubmitting) return;
   if (cart.length === 0) {
     return alert("Agregá productos al carrito");
   }
 
+  const isTableCheckout = delivery === "Consumo en mesa";
+  if (!isTableCheckout) {
+    const missing = orderDataMissing();
+    if (missing) return alert(missing);
+  }
   const name = val("name") || "Sin completar";
-  const rawPhone = val("phone");
-  const phone = normalizeSimonePhone(rawPhone);
-  if (!validSimonePhone(phone)) {
+  const phone = isTableCheckout ? normalizeSimonePhone(val("phone")) : normalizeOrderPhone(val("phone"));
+  if (isTableCheckout && !validSimonePhone(phone)) {
     return alert("Ingresá tu celular con formato 3772XXXXXX, sin 0 y sin 15.");
   }
   const phoneInput = get("phone");
   if (phoneInput) phoneInput.value = phone;
-  loyaltyPhone = phone;
-  sessionStorage.setItem("simoneLoyaltyPhone", phone);
+  if (validSimonePhone(phone)) {
+    loyaltyPhone = phone;
+    sessionStorage.setItem("simoneLoyaltyPhone", phone);
+  }
   const address = delivery === "Consumo en mesa"
     ? `Mesa ${tableNumber}`
     : (val("address") || "Sin completar");
@@ -1078,6 +1150,7 @@ async function sendOrder() {
   }
 
   const order = {
+    clientRequestId: delivery === "Consumo en mesa" ? undefined : currentOrderRequestId(),
     customer: {
       name,
       phone,
@@ -1160,33 +1233,41 @@ async function sendOrder() {
     `%0AEnvío: ${delivery === "Envío a domicilio" ? "Según dirección (no incluido)" : "No corresponde"}%0A` +
     `TOTAL PRODUCTOS: ${money(cartTotal())}`;
 
-  const res = await api("/api/orders", {
-    method: "POST",
-    body: JSON.stringify(order)
-  });
+  orderSubmitting = true;
+  updateCheckoutButton();
+  let res;
+  try {
+    res = await api("/api/orders", {
+      method: "POST",
+      body: JSON.stringify(order)
+    });
+  } catch (error) {
+    alert("No se pudo confirmar el pedido. Revisá tu conexión y volvé a tocar CONFIRMAR PEDIDO. No vuelvas a pagar.");
+    orderSubmitting = false;
+    updateCheckoutButton();
+    return;
+  }
 
-  await loadMenu();
+  // El pedido ya está guardado. No dependemos de WhatsApp ni de la recarga del menú.
   loyaltyData = null;
-
   if (delivery === "Consumo en mesa") {
     alert(`Pedido #${res.id} enviado. Acercate a caja para confirmar el pago. Mesa ${tableNumber}.`);
   } else {
-    window.open(
-      "https://wa.me/5493772584075?text=" + msg,
-      "_blank"
-    );
-    alert("Pedido guardado como #" + res.id);
+    alert(`✅ PEDIDO #${res.id} RECIBIDO EN SIMONE. ${payment === "Mercado Pago" ? "Comprobante recibido, pago pendiente de verificación." : "Pago en efectivo pendiente."} No necesitás enviarlo por WhatsApp.`);
   }
 
   cart = [];
   paymentReceiptData = "";
   paymentReceiptName = "";
   sessionStorage.removeItem("simoneCart");
+  resetOrderRequestId();
   const receiptInput = get("paymentReceipt");
   if (receiptInput) receiptInput.value = "";
   const receiptStatus = get("paymentReceiptStatus");
   if (receiptStatus) { receiptStatus.textContent = "Todavía no adjuntaste un comprobante."; receiptStatus.classList.remove("ready"); }
   closeCart();
+  orderSubmitting = false;
+  try { await loadMenu(); } catch (e) { render(); }
   render();
 }
 
